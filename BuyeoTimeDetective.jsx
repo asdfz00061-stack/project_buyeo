@@ -85,6 +85,7 @@ const THEME = {
 // 주인공 금동이 아바타: 봉인이 풀려 힘을 잃은 정령(동물) 모습 → 일곱 봉인을 모두 모으면 인간 소년 탐정으로 각성
 const HERO_AVATAR_BEAST = './images/characters/geumdongi_beast.png'; // 초반 마스코트/정령 형태
 const HERO_AVATAR_HUMAN = './images/characters/geumdongi_human.png'; // 완전 복원 후 인간형
+const HERO_FULL_HUMAN = './images/characters/geumdongi_human_full.png'; // 엔딩 변신 장면용 전신
 const HERO_NAME = '금동이';
 const NARRATOR = '나레이션'; // dialogues 에 speaker: NARRATOR 로 넣으면 초상화 없는 해설 상자로 나옵니다
 
@@ -2739,7 +2740,8 @@ function AwakeningOverlay({ sfxOn, onDone }) {
         ))}
 
       {/* 금동이 카드 */}
-      <div className="relative aspect-[3/4] h-[min(58vh,520px)]">
+      {/* 정령일 땐 3:4, 각성하면 전신 비율(2:3)로 길어짐 (번쩍이는 순간 바뀜) */}
+      <div className={`relative ${charging ? 'aspect-[3/4] h-[min(58vh,520px)]' : 'aspect-[687/1024] h-[min(64vh,620px)]'}`}>
         <div className="aw-halo pointer-events-none absolute -inset-[30%] rounded-full bg-[radial-gradient(circle,rgba(255,224,150,0.65),rgba(226,184,92,0.2)_40%,transparent_68%)]" />
         <div
           className={`relative h-full w-full rounded-[28px] bg-gradient-to-br from-[#fff0bd] via-[#b6852f] to-[#f6dc94] p-[3px] ${charging ? 'aw-card-charge' : 'aw-card-reveal'}`}
@@ -2751,7 +2753,13 @@ function AwakeningOverlay({ sfxOn, onDone }) {
               </div>
             ) : (
               <div className="aw-human absolute inset-0">
-                <HeroAvatar mode="human" className="h-full w-full" />
+                <SmartImage
+                  src={HERO_FULL_HUMAN}
+                  alt="금동이 (인간 수사관 전신)"
+                  className="h-full w-full"
+                  imgClassName="object-cover object-bottom"
+                  fallback={<HeroAvatar mode="human" className="h-full w-full" />}
+                />
               </div>
             )}
             <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/4 bg-gradient-to-t from-black/60 to-transparent" />
