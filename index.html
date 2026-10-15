@@ -151,18 +151,34 @@ const MOUTH = {
 const SECOND_HINT_AFTER = 2; // 이만큼 틀리면 두 번째 힌트(글자 수·첫 글자 / 오답 지우기)
 const mouthOf = (src) => (src ? MOUTH[String(src).split('/').pop()] || null : null);
 
-// 브라우저 내장 음성(유료 API 없음)의 인물별 높낮이(pitch)·빠르기(rate)
+// 인물별 목소리: id = 미리 만든 음성 파일 이름(audio/voice/<id>-<해시>.mp3)
+// 실제 목소리 설정(성우·빠르기·높낮이)은 tools/make_voices.py 의 VOICES 에 있습니다.
+// pitch·rate 는 음성 파일이 없을 때 쓰는 브라우저 내장 음성용 예비 값입니다.
 const VOICE = {
-  [NARRATOR]: { pitch: 1, rate: 0.95 },
-  학예연구사: { pitch: 1.2, rate: 1.03 },
-  노승: { pitch: 0.7, rate: 0.85 },
-  '백제 수문장': { pitch: 0.6, rate: 0.95 },
-  뱃사공: { pitch: 0.8, rate: 0.9 },
-  궁녀: { pitch: 1.35, rate: 1 },
-  능지기: { pitch: 0.65, rate: 0.85 },
-  해설사: { pitch: 0.95, rate: 1 },
+  [NARRATOR]: { id: 'narrator', pitch: 1, rate: 0.95 },
+  학예연구사: { id: 'curator', pitch: 1.2, rate: 1.03 },
+  노승: { id: 'monk', pitch: 0.7, rate: 0.85 },
+  '백제 수문장': { id: 'gatekeeper', pitch: 0.6, rate: 0.95 },
+  뱃사공: { id: 'boatman', pitch: 0.8, rate: 0.9 },
+  궁녀: { id: 'court_lady', pitch: 1.35, rate: 1 },
+  능지기: { id: 'tomb_keeper', pitch: 0.65, rate: 0.85 },
+  해설사: { id: 'docent', pitch: 0.95, rate: 1 },
 };
-const HERO_VOICE = { beast: { pitch: 1.6, rate: 1.08 }, human: { pitch: 1.1, rate: 1.02 } };
+const HERO_VOICE = {
+  beast: { id: 'hero_beast', pitch: 1.6, rate: 1.08 },
+  human: { id: 'hero_human', pitch: 1.1, rate: 1.02 },
+};
+
+// 대사 → 음성 파일 경로 (tools/make_voices.py 와 같은 FNV-1a 해시)
+const textHash = (s) => {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < s.length; i += 1) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 0x01000193) >>> 0;
+  }
+  return h.toString(16).padStart(8, '0');
+};
+const voiceFile = (id, text) => `audio/voice/${id}-${textHash(text)}.mp3`;
 
 /* ---------- 효과음: Web Audio로 직접 합성 (음원 파일 없음) ---------- */
 const Sound = (() => {
@@ -244,6 +260,76 @@ const Speech = (() => {
     },
     stop() {
       if (ok) window.speechSynthesis.cancel();
+    },
+  };
+})();
+
+/* ---------- 대사 음성 재생: 미리 만든 mp3, 없으면 브라우저 내장 음성으로 대신 ---------- */
+const VoicePlayer = (() => {
+  const ok = typeof window !== 'undefined' && typeof window.Audio === 'function';
+  // 오디오 요소 하나를 계속 재사용해야 모바일(iOS)에서 첫 터치 이후에도 자동 재생이 됩니다
+  const audio = ok ? new window.Audio() : null;
+  let token = 0;
+  // 0.05초 무음 WAV (첫 터치 때 재생해 오디오 잠금을 풉니다)
+  const SILENT = (() => {
+    const n = 400;
+    const b = new Uint8Array(44 + n);
+    const v = new DataView(b.buffer);
+    const str = (o, t) => [...t].forEach((c, i) => v.setUint8(o + i, c.charCodeAt(0)));
+    str(0, 'RIFF'); v.setUint32(4, 36 + n, true); str(8, 'WAVEfmt ');
+    v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+    v.setUint32(24, 8000, true); v.setUint32(28, 8000, true); v.setUint16(32, 1, true); v.setUint16(34, 8, true);
+    str(36, 'data'); v.setUint32(40, n, true); b.fill(128, 44);
+    let bin = '';
+    b.forEach((x) => { bin += String.fromCharCode(x); });
+    return `data:audio/wav;base64,${btoa(bin)}`;
+  })();
+  return {
+    unlock() {
+      if (!audio) return;
+      try {
+        audio.src = SILENT;
+        const p = audio.play();
+        if (p && p.catch) p.catch(() => {});
+      } catch {
+        /* 무시 */
+      }
+    },
+    // 재생 시작 시 onStart, 끝나면 onEnd. 파일을 못 불러오면 fallback(브라우저 음성) 실행
+    play(src, { onStart, onEnd, fallback } = {}) {
+      if (!audio) {
+        if (fallback) fallback();
+        return;
+      }
+      const my = ++token;
+      const mine = (fn) => (...args) => {
+        if (my === token && fn) fn(...args);
+      };
+      audio.onplaying = mine(onStart);
+      audio.onended = mine(onEnd);
+      audio.onerror = mine(() => {
+        if (onEnd) onEnd();
+        if (fallback) fallback();
+      });
+      audio.src = src;
+      const p = audio.play();
+      if (p && p.catch) {
+        p.catch(
+          mine((err) => {
+            // 자동 재생이 막힌 경우(NotAllowedError)는 조용히 넘어가고, 그 외에는 내장 음성으로
+            if (onEnd) onEnd();
+            if (err && err.name !== 'NotAllowedError' && err.name !== 'AbortError' && fallback) fallback();
+          }),
+        );
+      }
+    },
+    stop() {
+      token += 1;
+      if (audio) {
+        audio.pause();
+        audio.onplaying = audio.onended = audio.onerror = null;
+      }
+      Speech.stop();
     },
   };
 })();
@@ -761,6 +847,19 @@ const TOTAL = STAGES.length;
 // 클리어 대화 구성: 장소는 순서와 상관없이 풀 수 있으므로
 // - next 가 붙은 '다음 장소 안내' 대사는 그 장소가 아직 남아 있을 때만 보여 주고
 // - 마지막으로 봉인을 모은 장소에서는 어디든 완성 대사가 이어집니다.
+// 공통 대사 (음성 파일을 미리 만들 수 있도록 고정 문장으로 둡니다)
+const FINALE_LINE = '일곱 개의 봉인이 모두 모였습니다! 어서 국립부여박물관의 향로로 돌아가 의식을 완성하십시오!';
+const AWAKEN_LINE = '이 빛은…! 일곱 봉인의 힘이 하나로 모여 몸 안으로 흘러들어 와. 드디어 본래 모습을 되찾았어!';
+const GUIDE_LINES = {
+  학예연구사: '아직 찾지 못한 봉인이 남아 있어요. 지도에서 남은 유적지를 골라 수사를 이어 가 주세요.',
+  노승: '아직 거두지 못한 봉인이 남아 있소. 지도를 펼쳐 남은 곳으로 발길을 옮기시게.',
+  '백제 수문장': '아직 되찾지 못한 봉인이 남아 있다! 지도를 보고 남은 곳으로 서둘러 가거라.',
+  뱃사공: '아직 찾을 봉인이 남아 있지요. 지도를 보시고 남은 유적지로 노를 저어 가 보시구려.',
+  궁녀: '아직 잠든 봉인이 남아 있답니다. 지도에서 남은 유적지를 찾아가 보셔요.',
+  능지기: '아직 깨어나지 않은 봉인이 남아 있소. 지도에서 남은 곳을 찾아가 보시오.',
+  해설사: '아직 찾지 못한 봉인이 남아 있습니다. 지도에서 남은 유적지를 골라 보세요.',
+};
+
 const buildClearDialogues = (s, visited) => {
   const remaining = TOTAL - visited.length;
   const npc = s.clearDialogues[0];
@@ -768,12 +867,12 @@ const buildClearDialogues = (s, visited) => {
   if (remaining === 0) {
     return [
       ...lines,
-      { speaker: npc.speaker, avatar: npc.avatar, text: '일곱 개의 봉인이 모두 모였습니다! 어서 국립부여박물관의 향로로 돌아가 의식을 완성하십시오!' },
-      { speaker: '수사관 (나)', avatar: null, text: '이 빛은…! 일곱 봉인의 힘이 하나로 모여 몸 안으로 흘러들어 와. 드디어 본래 모습을 되찾았어!' },
+      { speaker: npc.speaker, avatar: npc.avatar, text: FINALE_LINE },
+      { speaker: '수사관 (나)', avatar: null, text: AWAKEN_LINE },
     ];
   }
   if (!lines.some((d) => d.next)) {
-    lines.push({ speaker: npc.speaker, avatar: npc.avatar, text: `아직 봉인 ${remaining}개가 남아 있어요. 지도에서 남은 유적지를 골라 수사를 이어 가세요.` });
+    lines.push({ speaker: npc.speaker, avatar: npc.avatar, text: GUIDE_LINES[npc.speaker] || GUIDE_LINES.해설사 });
   }
   return lines;
 };
@@ -852,12 +951,12 @@ function BuyeoTimeDetective() {
   // ---- 소리 설정 (효과음 · 음성 읽기) ----
   const [settings, setSettings] = useState(() => ({ sfx: true, voice: true, ...(readJSON(SETTINGS_KEY) || {}) }));
   const sfxOn = settings.sfx !== false;
-  const voiceOn = settings.voice !== false && Speech.supported;
+  const voiceOn = settings.voice !== false;
   const toggleSetting = (key) =>
     setSettings((s) => {
       const next = { ...s, [key]: s[key] === false };
       writeJSON(SETTINGS_KEY, next);
-      if (key === 'voice' && !next.voice) Speech.stop();
+      if (key === 'voice' && !next.voice) VoicePlayer.stop();
       return next;
     });
 
@@ -886,9 +985,9 @@ function BuyeoTimeDetective() {
 
   // 화면을 떠나거나 엔딩으로 넘어가면 읽던 음성을 멈춤
   useEffect(() => {
-    if (gameStatus !== 'playing') Speech.stop();
+    if (gameStatus !== 'playing') VoicePlayer.stop();
   }, [gameStatus]);
-  useEffect(() => () => Speech.stop(), []);
+  useEffect(() => () => VoicePlayer.stop(), []);
 
   const stage = useMemo(() => STAGES.find((s) => s.id === currentStageId), [currentStageId]);
   const attempts = attemptsByStage[stage.id] || 0;
@@ -955,12 +1054,14 @@ function BuyeoTimeDetective() {
   // 버튼을 누른 순간에 오디오를 깨워 둬야 모바일(특히 iOS)에서 소리가 납니다
   const startGame = () => {
     Sound.unlock();
+    VoicePlayer.unlock();
     resetProgress();
     setGameStatus('playing');
   };
 
   const resumeGame = () => {
     Sound.unlock();
+    VoicePlayer.unlock();
     setGameStatus(saved.gameStatus === 'ending' && visitedStages.length === TOTAL ? 'ending' : 'playing');
   };
 
@@ -1201,19 +1302,17 @@ function BuyeoTimeDetective() {
           >
             {sfxOn ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
           </button>
-          {Speech.supported && (
-            <button
-              onClick={() => toggleSetting('voice')}
-              aria-pressed={voiceOn}
-              aria-label={voiceOn ? '대사 음성 끄기' : '대사 음성 켜기'}
-              title={voiceOn ? '대사 음성 끄기' : '대사 음성 켜기'}
-              className={`relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full border transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#e2b85c]/60 ${voiceOn ? 'border-[#5a4a32] text-[#e2b85c]' : 'border-[#3a2f20] text-[#6f6350]'
-                }`}
-            >
-              <SpeechIcon className="h-4 w-4" />
-              {!voiceOn && <span className="absolute h-[1.5px] w-5 rotate-45 rounded bg-current" aria-hidden="true" />}
-            </button>
-          )}
+          <button
+            onClick={() => toggleSetting('voice')}
+            aria-pressed={voiceOn}
+            aria-label={voiceOn ? '대사 음성 끄기' : '대사 음성 켜기'}
+            title={voiceOn ? '대사 음성 끄기' : '대사 음성 켜기'}
+            className={`relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full border transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#e2b85c]/60 ${voiceOn ? 'border-[#5a4a32] text-[#e2b85c]' : 'border-[#3a2f20] text-[#6f6350]'
+              }`}
+          >
+            <SpeechIcon className="h-4 w-4" />
+            {!voiceOn && <span className="absolute h-[1.5px] w-5 rotate-45 rounded bg-current" aria-hidden="true" />}
+          </button>
           {TEST_ENABLED && (
             <button
               onClick={() => {
@@ -2461,18 +2560,23 @@ function DialogueBox({
   const displayName = isPlayer ? HERO_NAME : speaker;
   const [shown, done, skip] = useTypewriter(text);
   const [speaking, setSpeaking] = useState(false);
+  const voiceId = voiceProfile?.id;
   const pitch = voiceProfile?.pitch ?? 1;
   const rate = voiceProfile?.rate ?? 1;
 
-  // 음성 읽기: 대사가 바뀔 때마다 새로 읽고, 넘기면 바로 멈춤
+  // 음성 읽기: 인물별로 미리 만든 음성 파일을 재생 (없으면 브라우저 내장 음성), 넘기면 바로 멈춤
   useEffect(() => {
     if (!voiceOn) return undefined;
-    Speech.speak(text, { pitch, rate }, () => setSpeaking(true), () => setSpeaking(false));
+    const onStart = () => setSpeaking(true);
+    const onEnd = () => setSpeaking(false);
+    const fallback = () => Speech.speak(text, { pitch, rate }, onStart, onEnd);
+    if (voiceId) VoicePlayer.play(voiceFile(voiceId, text), { onStart, onEnd, fallback });
+    else fallback();
     return () => {
-      Speech.stop();
+      VoicePlayer.stop();
       setSpeaking(false);
     };
-  }, [text, voiceOn, pitch, rate]);
+  }, [text, voiceOn, voiceId, pitch, rate]);
 
   // 음성이 꺼져 있으면 글자가 찍힐 때 '톡톡' 타자 소리 (인물 목소리 높낮이 반영)
   useEffect(() => {
