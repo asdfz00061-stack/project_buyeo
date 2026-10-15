@@ -37,6 +37,9 @@ import {
   Sprout,
   Sun,
   Stamp,
+  Volume2,
+  VolumeX,
+  Speech as SpeechIcon,
 } from 'lucide-react';
 
 /* =========================================================================
@@ -59,8 +62,13 @@ import {
  * 스테이지 확장 방법
  * - 각 장소에 dialogues / quiz / clearDialogues 를 채우면 바로 플레이됩니다.
  * - quiz.type 은 'text'(단답형) 또는 'choice'(객관식)를 지원합니다.
- * - 잠금 규칙: 이전 순서의 장소를 클리어해야 다음 장소가 열립니다.
- *   (헤더의 '테스트' 토글을 켜면 모든 장소로 바로 이동할 수 있습니다.)
+ * - 진행 규칙: 모든 장소가 처음부터 열려 있어 순서와 상관없이 풀 수 있습니다.
+ *   clearDialogues 의 next: '장소id' 대사는 그 장소가 아직 남아 있을 때만 나옵니다.
+ *   (주소 끝에 ?test 를 붙이면 헤더에 '테스트' 토글이 생겨 정답 보기·즉시 클리어를 쓸 수 있습니다.)
+ * - 나레이션: dialogues 에 { speaker: NARRATOR, text } 를 넣으면 초상화 없는 해설 상자로 나옵니다.
+ * - 진행 상황은 localStorage 에 자동 저장되어 새로고침해도 '이어서 수사하기'로 계속할 수 있습니다.
+ * - 효과음은 Web Audio 합성, 대사 음성은 브라우저 내장 음성(Web Speech)이라 외부 API가 필요 없습니다.
+ *   인물별 목소리 높낮이는 VOICE, 말할 때 움직이는 입 위치는 MOUTH 에서 조정합니다.
  * ========================================================================= */
 
 // 각 장소의 비주얼 테마 (아이콘·색)
@@ -78,6 +86,154 @@ const THEME = {
 const HERO_AVATAR_BEAST = './images/characters/geumdongi_beast.png'; // 초반 마스코트/정령 형태
 const HERO_AVATAR_HUMAN = './images/characters/geumdongi_human.png'; // 완전 복원 후 인간형
 const HERO_NAME = '금동이';
+const NARRATOR = '나레이션'; // dialogues 에 speaker: NARRATOR 로 넣으면 초상화 없는 해설 상자로 나옵니다
+
+// 테스트 모드 버튼은 주소 끝에 ?test 를 붙였을 때만 보입니다 (예: https://.../?test)
+const TEST_ENABLED = (() => {
+  try {
+    return new URLSearchParams(window.location.search).has('test');
+  } catch {
+    return false;
+  }
+})();
+
+// 말할 때 움직이는 입 위치: 초상화 이미지(3:4) 기준 %. x·y = 입 중심, w = 입 너비
+const MOUTH = {
+  'curator.png': { x: 48.5, y: 60.5, w: 9 },
+  'monk.png': { x: 50, y: 65.5, w: 12 },
+  'gatekeeper.png': { x: 49.5, y: 57.5, w: 8 },
+  'boatman.png': { x: 49.5, y: 61, w: 14 },
+  'court_lady.png': { x: 68, y: 67, w: 7 },
+  'tomb_keeper.png': { x: 51.5, y: 53.5, w: 12 },
+  'docent.png': { x: 50.5, y: 53.5, w: 8 },
+  'geumdongi_beast.png': { x: 50, y: 71, w: 4 },
+  'geumdongi_human.png': { x: 51, y: 59, w: 12 },
+};
+const SECOND_HINT_AFTER = 2; // 이만큼 틀리면 두 번째 힌트(글자 수·첫 글자 / 오답 지우기)
+const mouthOf = (src) => (src ? MOUTH[String(src).split('/').pop()] || null : null);
+
+// 브라우저 내장 음성(유료 API 없음)의 인물별 높낮이(pitch)·빠르기(rate)
+const VOICE = {
+  [NARRATOR]: { pitch: 1, rate: 0.95 },
+  학예연구사: { pitch: 1.2, rate: 1.03 },
+  노승: { pitch: 0.7, rate: 0.85 },
+  '백제 수문장': { pitch: 0.6, rate: 0.95 },
+  뱃사공: { pitch: 0.8, rate: 0.9 },
+  궁녀: { pitch: 1.35, rate: 1 },
+  능지기: { pitch: 0.65, rate: 0.85 },
+  해설사: { pitch: 0.95, rate: 1 },
+};
+const HERO_VOICE = { beast: { pitch: 1.6, rate: 1.08 }, human: { pitch: 1.1, rate: 1.02 } };
+
+/* ---------- 효과음: Web Audio로 직접 합성 (음원 파일 없음) ---------- */
+const Sound = (() => {
+  let ctx = null;
+  const ac = () => {
+    try {
+      if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
+      if (ctx.state === 'suspended') ctx.resume();
+      return ctx;
+    } catch {
+      return null;
+    }
+  };
+  const tone = (freq, start, dur, { type = 'sine', gain = 0.15 } = {}) => {
+    const c = ac();
+    if (!c) return;
+    const t = c.currentTime + start;
+    const o = c.createOscillator();
+    const g = c.createGain();
+    o.type = type;
+    o.frequency.setValueAtTime(freq, t);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(gain, t + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g);
+    g.connect(c.destination);
+    o.start(t);
+    o.stop(t + dur + 0.05);
+  };
+  return {
+    unlock: () => ac(), // 첫 클릭 때 호출해 두면 모바일에서도 소리가 납니다
+    correct() {
+      [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => {
+        tone(f, i * 0.09, 0.55, { type: 'triangle', gain: 0.18 });
+        tone(f * 2, i * 0.09, 0.3, { gain: 0.04 });
+      });
+      [1568, 2093, 2637, 3136].forEach((f, i) => tone(f, 0.45 + i * 0.07, 0.7, { gain: 0.05 }));
+    },
+    wrong() {
+      tone(233, 0, 0.16, { type: 'square', gain: 0.05 });
+      tone(175, 0.14, 0.3, { type: 'square', gain: 0.05 });
+    },
+    blip(pitch = 1) {
+      tone(480 * pitch + Math.random() * 40, 0, 0.045, { type: 'square', gain: 0.018 });
+    },
+    finale() {
+      [261.63, 329.63, 392, 523.25, 659.25, 783.99, 1046.5].forEach((f, i) => tone(f, i * 0.11, 1.4, { type: 'triangle', gain: 0.12 }));
+    },
+  };
+})();
+
+/* ---------- 음성 읽기: 브라우저 내장 Web Speech (기기마다 목소리가 다름) ---------- */
+const Speech = (() => {
+  const ok = typeof window !== 'undefined' && 'speechSynthesis' in window && 'SpeechSynthesisUtterance' in window;
+  let voice = null;
+  const pick = () => {
+    if (!ok) return;
+    const vs = window.speechSynthesis.getVoices();
+    voice = vs.find((v) => /^ko/i.test(v.lang) && /google|yuna|heami|sunhi/i.test(v.name)) || vs.find((v) => /^ko/i.test(v.lang)) || null;
+  };
+  if (ok) {
+    pick();
+    window.speechSynthesis.addEventListener?.('voiceschanged', pick);
+  }
+  return {
+    supported: ok,
+    speak(text, { pitch = 1, rate = 1 } = {}, onStart, onEnd) {
+      if (!ok) return;
+      window.speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(String(text).replace(/[《》「」『』"“”]/g, ' '));
+      u.lang = 'ko-KR';
+      if (voice) u.voice = voice;
+      u.pitch = pitch;
+      u.rate = rate;
+      u.onstart = onStart;
+      u.onend = onEnd;
+      u.onerror = onEnd;
+      window.speechSynthesis.speak(u);
+    },
+    stop() {
+      if (ok) window.speechSynthesis.cancel();
+    },
+  };
+})();
+
+/* ---------- 진행 저장 (브라우저 localStorage, 새로고침해도 이어하기) ---------- */
+const SAVE_KEY = 'buyeo-time-detective:save:v1';
+const SETTINGS_KEY = 'buyeo-time-detective:settings:v1';
+const readJSON = (key) => {
+  try {
+    const raw = window.localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+};
+const writeJSON = (key, value) => {
+  try {
+    window.localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    /* 저장 불가(사생활 보호 모드 등)여도 게임은 그대로 진행 */
+  }
+};
+const removeKey = (key) => {
+  try {
+    window.localStorage.removeItem(key);
+  } catch {
+    /* 무시 */
+  }
+};
 
 // 보상 아이템 이미지가 없을 때 메달에 새길 아이콘
 const ITEM_ICON = {
@@ -115,6 +271,11 @@ const STAGES = [
     },
     npc: { name: '학예연구사', role: '국립부여박물관 학예연구사' },
     dialogues: [
+      {
+        speaker: NARRATOR,
+        avatar: null,
+        text: '자정이 막 지난 국립부여박물관. 텅 빈 향로 진열장 앞에서 학예연구사가 수사관을 기다리고 있다.',
+      },
       {
         speaker: '학예연구사',
         avatar: './images/characters/curator.png',
@@ -159,6 +320,7 @@ const STAGES = [
       {
         speaker: '학예연구사',
         avatar: './images/characters/curator.png',
+        next: 'jeongnimsa',
         text: '깃털이 가리키는 빛이 서쪽, 정림사지 오층석탑 쪽으로 뻗어 있어요. 다음 봉인은 그곳에 있을 겁니다.',
       },
     ],
@@ -185,6 +347,11 @@ const STAGES = [
     },
     npc: { name: '노승', role: '정림사지를 돌보는 노승' },
     dialogues: [
+      {
+        speaker: NARRATOR,
+        avatar: null,
+        text: '새벽안개가 내려앉은 정림사지. 천사백 년을 버틴 오층석탑 아래에서 노승이 조용히 염주를 굴리고 있다.',
+      },
       {
         speaker: '노승',
         avatar: './images/characters/monk.png',
@@ -219,6 +386,7 @@ const STAGES = [
       {
         speaker: '노승',
         avatar: './images/characters/monk.png',
+        next: 'busosanseong',
         text: '다음 봉인은 사비도성의 최후 요새, 부소산성 쪽에서 서늘한 기운을 내뿜고 있소.',
       },
     ],
@@ -245,6 +413,11 @@ const STAGES = [
     },
     npc: { name: '백제 수문장', role: '부소산성을 지키는 수문장' },
     dialogues: [
+      {
+        speaker: NARRATOR,
+        avatar: null,
+        text: '솔바람이 서늘한 부소산성 숲길. 갑옷 차림의 백제 수문장이 매서운 눈빛으로 길을 막아선다.',
+      },
       {
         speaker: '백제 수문장',
         avatar: './images/characters/gatekeeper.png',
@@ -279,6 +452,7 @@ const STAGES = [
       {
         speaker: '백제 수문장',
         avatar: './images/characters/gatekeeper.png',
+        next: 'baengmagang',
         text: '이제 강바람이 불어오는 백마강 구드래 나루터로 발길을 옮겨보아라.',
       },
     ],
@@ -305,6 +479,11 @@ const STAGES = [
     },
     npc: { name: '뱃사공', role: '백마강 황포돛배 뱃사공' },
     dialogues: [
+      {
+        speaker: NARRATOR,
+        avatar: null,
+        text: '황포돛배가 물결에 흔들리는 구드래나루. 노를 쥔 뱃사공이 강 건너 낙화암을 바라보고 있다.',
+      },
       {
         speaker: '뱃사공',
         avatar: './images/characters/boatman.png',
@@ -339,6 +518,7 @@ const STAGES = [
       {
         speaker: '뱃사공',
         avatar: './images/characters/boatman.png',
+        next: 'gungnamji',
         text: '나침반 바늘이 남쪽, 아름다운 연못이 있는 궁남지를 가리키고 있군요.',
       },
     ],
@@ -365,6 +545,11 @@ const STAGES = [
     },
     npc: { name: '궁녀', role: '포룡정을 거니는 여인' },
     dialogues: [
+      {
+        speaker: NARRATOR,
+        avatar: null,
+        text: '연꽃 향이 은은한 궁남지. 포룡정으로 이어진 다리 위를 한 궁녀가 천천히 거닐고 있다.',
+      },
       {
         speaker: '궁녀',
         avatar: './images/characters/court_lady.png',
@@ -399,6 +584,7 @@ const STAGES = [
       {
         speaker: '궁녀',
         avatar: './images/characters/court_lady.png',
+        next: 'royaltombs',
         text: '이제 역대 왕들이 고이 잠들어 계신 부여왕릉원으로 가보셔야 합니다.',
       },
     ],
@@ -425,6 +611,11 @@ const STAGES = [
     },
     npc: { name: '능지기', role: '능산리 고분군을 지키는 자' },
     dialogues: [
+      {
+        speaker: NARRATOR,
+        avatar: null,
+        text: '둥근 봉분들이 나란히 잠든 부여왕릉원. 삿갓을 멘 능지기가 고분 곁을 묵묵히 지키고 있다.',
+      },
       {
         speaker: '능지기',
         avatar: './images/characters/tomb_keeper.png',
@@ -459,6 +650,7 @@ const STAGES = [
       {
         speaker: '능지기',
         avatar: './images/characters/tomb_keeper.png',
+        next: 'sindongyeop',
         text: '마지막 일곱 번째 봉인은 백제의 얼을 현대의 언어로 노래한 신동엽 문학관에 있습니다.',
       },
     ],
@@ -486,9 +678,14 @@ const STAGES = [
     npc: { name: '해설사', role: '신동엽 문학관 해설사' },
     dialogues: [
       {
+        speaker: NARRATOR,
+        avatar: null,
+        text: '시인이 나고 자란 옛집 곁, 신동엽 문학관. 해설사가 시 구절이 걸린 벽 앞에서 수사관을 맞이한다.',
+      },
+      {
         speaker: '해설사',
         avatar: './images/characters/docent.png',
-        text: '수사관님, 마지막 여정은 백제의 고도 부여에서 태어나 역사를 노래한 민족시인 신동엽 문학관입니다.',
+        text: '수사관님, 이번 여정은 백제의 고도 부여에서 태어나 역사를 노래한 민족시인 신동엽 문학관입니다.',
       },
       {
         speaker: '해설사',
@@ -508,7 +705,7 @@ const STAGES = [
       placeholder: '빈칸의 낱말 입력',
       answers: ['알맹이'],
       hint: '껍데기와 정반대되는 핵심 실체를 뜻하는 순우리말입니다.',
-      successMessage: "완벽합니다! 마지막 봉인인 '순수의 시 구절'을 획득했습니다!",
+      successMessage: "완벽합니다! 일곱 번째 봉인인 '순수의 시 구절'을 획득했습니다!",
       failMessage: '시 구절이 맞지 않습니다. 껍데기의 반대말을 생각해보세요.',
     },
     clearDialogues: [
@@ -517,46 +714,90 @@ const STAGES = [
         avatar: './images/characters/docent.png',
         text: '알맹이…! 그렇습니다. 온갖 왜곡과 허식을 걷어내고 순수한 역사의 알맹이만 남기는 것이지요.',
       },
-      {
-        speaker: '해설사',
-        avatar: './images/characters/docent.png',
-        text: '일곱 개의 봉인이 모두 모였습니다! 어서 국립부여박물관의 향로로 돌아가 의식을 완성하십시오!',
-      },
-      {
-        speaker: '수사관 (나)',
-        avatar: null,
-        text: '이 빛은…! 일곱 봉인의 힘이 하나로 모여 몸 안으로 흘러들어 와. 드디어 본래 모습을 되찾았어!',
-      },
     ],
   },
 ];
 const TOTAL = STAGES.length;
+
+// 클리어 대화 구성: 장소는 순서와 상관없이 풀 수 있으므로
+// - next 가 붙은 '다음 장소 안내' 대사는 그 장소가 아직 남아 있을 때만 보여 주고
+// - 마지막으로 봉인을 모은 장소에서는 어디든 완성 대사가 이어집니다.
+const buildClearDialogues = (s, visited) => {
+  const remaining = TOTAL - visited.length;
+  const npc = s.clearDialogues[0];
+  const lines = s.clearDialogues.filter((d) => !d.next || (remaining > 0 && !visited.includes(d.next)));
+  if (remaining === 0) {
+    return [
+      ...lines,
+      { speaker: npc.speaker, avatar: npc.avatar, text: '일곱 개의 봉인이 모두 모였습니다! 어서 국립부여박물관의 향로로 돌아가 의식을 완성하십시오!' },
+      { speaker: '수사관 (나)', avatar: null, text: '이 빛은…! 일곱 봉인의 힘이 하나로 모여 몸 안으로 흘러들어 와. 드디어 본래 모습을 되찾았어!' },
+    ];
+  }
+  if (!lines.some((d) => d.next)) {
+    lines.push({ speaker: npc.speaker, avatar: npc.avatar, text: `아직 봉인 ${remaining}개가 남아 있어요. 지도에서 남은 유적지를 골라 수사를 이어 가세요.` });
+  }
+  return lines;
+};
 const normalize = (s) => String(s ?? '').replace(/\s+/g, '').toLowerCase();
 const formatDate = (d) => `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일`;
 const rewardOf = (s) => ({ ...s.rewardItem, stageId: s.id, stageName: s.name });
 
 const INITIAL_STATE = {
   currentStageId: STAGES[0].id,
-  inventory: [],
   visitedStages: [],
   dialogueStep: 0,
   gameStatus: 'intro',
+  mistakeCount: 0,
+  hintStages: [],
+  introReadStages: [],
+  attemptsByStage: {},
+  completedAt: null,
+};
+
+// 저장된 진행을 읽어 오되, 장소 id 등이 맞지 않는 값은 버리고 기본값으로
+const loadSave = () => {
+  const s = readJSON(SAVE_KEY);
+  if (!s || typeof s !== 'object') return INITIAL_STATE;
+  const ids = new Set(STAGES.map((x) => x.id));
+  const idList = (v) => (Array.isArray(v) ? [...new Set(v.filter((id) => ids.has(id)))] : []);
+  const count = (v) => (Number.isInteger(v) && v >= 0 ? v : 0);
+  const attempts = {};
+  if (s.attemptsByStage && typeof s.attemptsByStage === 'object') {
+    Object.entries(s.attemptsByStage).forEach(([id, n]) => {
+      if (ids.has(id)) attempts[id] = count(n);
+    });
+  }
+  const done = s.completedAt ? new Date(s.completedAt) : null;
+  return {
+    currentStageId: ids.has(s.currentStageId) ? s.currentStageId : STAGES[0].id,
+    visitedStages: idList(s.visitedStages),
+    dialogueStep: count(s.dialogueStep),
+    gameStatus: s.gameStatus === 'ending' ? 'ending' : s.gameStatus === 'playing' ? 'playing' : 'intro',
+    mistakeCount: count(s.mistakeCount),
+    hintStages: idList(s.hintStages),
+    introReadStages: idList(s.introReadStages),
+    attemptsByStage: attempts,
+    completedAt: done && !Number.isNaN(done.getTime()) ? done : null,
+  };
 };
 
 export default function BuyeoTimeDetective() {
+  // 새로고침 전 진행 상황 (처음 한 번만 읽음)
+  const [saved] = useState(loadSave);
+
   // ---- 핵심 게임 상태 ----
-  const [currentStageId, setCurrentStageId] = useState(INITIAL_STATE.currentStageId);
-  const [inventory, setInventory] = useState(INITIAL_STATE.inventory);
-  const [visitedStages, setVisitedStages] = useState(INITIAL_STATE.visitedStages);
-  const [dialogueStep, setDialogueStep] = useState(INITIAL_STATE.dialogueStep);
-  const [gameStatus, setGameStatus] = useState(INITIAL_STATE.gameStatus);
+  const [currentStageId, setCurrentStageId] = useState(saved.currentStageId);
+  const [visitedStages, setVisitedStages] = useState(saved.visitedStages);
+  const [dialogueStep, setDialogueStep] = useState(saved.dialogueStep);
+  const [gameStatus, setGameStatus] = useState('intro'); // 저장이 있어도 인트로에서 '이어서 하기'로 시작
+  const inventory = useMemo(() => visitedStages.map((id) => rewardOf(STAGES.find((s) => s.id === id))), [visitedStages]);
 
   // ---- UI 상태 ----
   const [answerInput, setAnswerInput] = useState('');
   const [selectedChoice, setSelectedChoice] = useState(null);
   const [showHint, setShowHint] = useState(false);
   const [feedback, setFeedback] = useState(null); // { type: 'success' | 'fail', message }
-  const [attempts, setAttempts] = useState(0);
+  const [attemptsByStage, setAttemptsByStage] = useState(saved.attemptsByStage); // 장소별 오답 횟수 (2번 틀리면 두 번째 힌트)
   const [isNotebookOpen, setNotebookOpen] = useState(false);
   const [rewardPopupId, setRewardPopupId] = useState(null); // 획득 팝업에 띄울 장소 id
 
@@ -564,9 +805,22 @@ export default function BuyeoTimeDetective() {
   const [celebrateKey, setCelebrateKey] = useState(0); // 값이 바뀔 때마다 축하 이펙트 재생
   const [isCelebrating, setCelebrating] = useState(false);
   const [shakeKey, setShakeKey] = useState(0); // 값이 바뀔 때마다 오답 흔들림 재생
-  const [mistakeCount, setMistakeCount] = useState(0);
-  const [hintStages, setHintStages] = useState([]);
-  const [completedAt, setCompletedAt] = useState(null);
+  const [mistakeCount, setMistakeCount] = useState(saved.mistakeCount);
+  const [hintStages, setHintStages] = useState(saved.hintStages);
+  const [introReadStages, setIntroReadStages] = useState(saved.introReadStages); // 도입 대화를 끝까지 본 장소 (다시 오면 바로 단서로)
+  const [completedAt, setCompletedAt] = useState(saved.completedAt);
+
+  // ---- 소리 설정 (효과음 · 음성 읽기) ----
+  const [settings, setSettings] = useState(() => ({ sfx: true, voice: true, ...(readJSON(SETTINGS_KEY) || {}) }));
+  const sfxOn = settings.sfx !== false;
+  const voiceOn = settings.voice !== false && Speech.supported;
+  const toggleSetting = (key) =>
+    setSettings((s) => {
+      const next = { ...s, [key]: s[key] === false };
+      writeJSON(SETTINGS_KEY, next);
+      if (key === 'voice' && !next.voice) Speech.stop();
+      return next;
+    });
 
   // ---- 테스트 모드 ----
   const [testMode, setTestMode] = useState(false);
@@ -575,13 +829,40 @@ export default function BuyeoTimeDetective() {
   const mainRef = useRef(null);
   const lastSubmitRef = useRef(0);
 
+  // 진행할 때마다 저장 (인트로 화면에서는 이전 저장을 덮어쓰지 않음)
+  useEffect(() => {
+    if (gameStatus === 'intro') return;
+    writeJSON(SAVE_KEY, {
+      currentStageId,
+      visitedStages,
+      dialogueStep,
+      gameStatus,
+      mistakeCount,
+      hintStages,
+      introReadStages,
+      attemptsByStage,
+      completedAt: completedAt ? completedAt.toISOString() : null,
+    });
+  }, [gameStatus, currentStageId, visitedStages, dialogueStep, mistakeCount, hintStages, introReadStages, attemptsByStage, completedAt]);
+
+  // 화면을 떠나거나 엔딩으로 넘어가면 읽던 음성을 멈춤
+  useEffect(() => {
+    if (gameStatus !== 'playing') Speech.stop();
+  }, [gameStatus]);
+  useEffect(() => () => Speech.stop(), []);
+
   const stage = useMemo(() => STAGES.find((s) => s.id === currentStageId), [currentStageId]);
+  const attempts = attemptsByStage[stage.id] || 0;
+  // 저장된 진행이 있고, 처음 상태와 다를 때만 '이어서 하기'
+  const canResume =
+    saved.gameStatus !== 'intro' &&
+    (visitedStages.length > 0 || introReadStages.length > 0 || dialogueStep > 0 || currentStageId !== STAGES[0].id);
   const theme = THEME[stage.id];
   const StageIcon = theme.icon;
 
   const isCleared = visitedStages.includes(stage.id);
   const isPlayable = stage.dialogues.length > 0 && stage.quiz;
-  const isUnlocked = (s) => testMode || s.order === 1 || visitedStages.includes(STAGES[s.order - 2].id);
+  const clearDialogues = useMemo(() => buildClearDialogues(stage, visitedStages), [stage, visitedStages]);
 
   // 진행 단계: 대화 → 퀴즈 → 클리어 대화
   const introDone = dialogueStep >= stage.dialogues.length;
@@ -590,10 +871,13 @@ export default function BuyeoTimeDetective() {
     ? null
     : !isCleared
       ? stage.dialogues[Math.min(dialogueStep, stage.dialogues.length - 1)]
-      : stage.clearDialogues[Math.min(clearStep, stage.clearDialogues.length - 1)];
+      : clearDialogues[Math.min(clearStep, clearDialogues.length - 1)];
   const showQuiz = isPlayable && introDone && !isCleared;
-  const clearDialoguesDone = isCleared && clearStep >= stage.clearDialogues.length - 1;
-  const nextStage = STAGES.find((s) => s.order === stage.order + 1);
+  const clearDialoguesDone = isCleared && clearStep >= clearDialogues.length - 1;
+  // 다음 이동 후보: 지금 장소 다음 순서부터 한 바퀴 돌며 아직 못 푼 장소
+  const nextStage = [...STAGES.slice(stage.order), ...STAGES.slice(0, stage.order - 1)].find(
+    (s) => !visitedStages.includes(s.id),
+  );
   const allCleared = visitedStages.length === TOTAL;
   // 일곱 봉인을 모두 모은 순간(또는 엔딩)부터 인간형으로 각성
   const heroMode = allCleared || gameStatus === 'ending' ? 'human' : 'beast';
@@ -603,7 +887,6 @@ export default function BuyeoTimeDetective() {
     setSelectedChoice(null);
     setShowHint(false);
     setFeedback(null);
-    setAttempts(0);
   };
 
   useEffect(() => {
@@ -614,41 +897,55 @@ export default function BuyeoTimeDetective() {
   }, [celebrateKey]);
 
   // ---- 동작 ----
-  const startGame = () => {
-    setGameStatus('playing');
-    setCurrentStageId(STAGES[0].id);
-    setDialogueStep(0);
-    resetStageUI();
-  };
-
-  const restartGame = () => {
+  const resetProgress = () => {
+    removeKey(SAVE_KEY);
     setCurrentStageId(INITIAL_STATE.currentStageId);
-    setInventory([]);
     setVisitedStages([]);
     setDialogueStep(0);
-    setGameStatus('intro');
     setNotebookOpen(false);
     setMistakeCount(0);
     setHintStages([]);
+    setIntroReadStages([]);
+    setAttemptsByStage({});
     setCompletedAt(null);
     setRevealAnswer(false);
     setRewardPopupId(null);
     resetStageUI();
   };
 
+  // 버튼을 누른 순간에 오디오를 깨워 둬야 모바일(특히 iOS)에서 소리가 납니다
+  const startGame = () => {
+    Sound.unlock();
+    resetProgress();
+    setGameStatus('playing');
+  };
+
+  const resumeGame = () => {
+    Sound.unlock();
+    setGameStatus(saved.gameStatus === 'ending' && visitedStages.length === TOTAL ? 'ending' : 'playing');
+  };
+
+  const restartGame = () => {
+    resetProgress();
+    setGameStatus('intro');
+  };
+
   const goToStage = (target) => {
-    if (!isUnlocked(target)) return;
     setCurrentStageId(target.id);
-    // 이미 클리어한 장소는 클리어 대화 처음부터, 아니면 도입 대화 처음부터
-    setDialogueStep(visitedStages.includes(target.id) ? target.dialogues.length : 0);
+    // 클리어한 장소는 클리어 대화 처음부터, 도입 대화를 이미 본 장소는 바로 단서부터, 처음 온 곳은 도입 대화부터
+    const skipIntro = visitedStages.includes(target.id) || introReadStages.includes(target.id);
+    setDialogueStep(skipIntro ? target.dialogues.length : 0);
     resetStageUI();
     if (mainRef.current) mainRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
   const handleNext = () => {
     if (!isCleared && dialogueStep < stage.dialogues.length) {
+      if (dialogueStep === stage.dialogues.length - 1) {
+        setIntroReadStages((r) => (r.includes(stage.id) ? r : [...r, stage.id]));
+      }
       setDialogueStep((n) => n + 1);
-    } else if (isCleared && clearStep < stage.clearDialogues.length - 1) {
+    } else if (isCleared && clearStep < clearDialogues.length - 1) {
       setDialogueStep((n) => n + 1);
     }
   };
@@ -658,8 +955,8 @@ export default function BuyeoTimeDetective() {
     if (visitedStages.includes(target.id)) return;
     const nextVisited = [...visitedStages, target.id];
     setVisitedStages((prev) => (prev.includes(target.id) ? prev : [...prev, target.id]));
-    setInventory((inv) => (inv.some((it) => it.stageId === target.id) ? inv : [...inv, rewardOf(target)]));
     setRewardPopupId(target.id);
+    if (sfxOn) Sound.correct();
     setCelebrateKey((k) => k + 1);
     if (nextVisited.length === TOTAL) setCompletedAt(new Date());
   };
@@ -669,6 +966,7 @@ export default function BuyeoTimeDetective() {
     setRewardPopupId(null);
     setGameStatus('ending');
     setCelebrateKey((k) => k + 1);
+    if (sfxOn) Sound.finale();
     window.scrollTo({ top: 0 });
   };
 
@@ -695,10 +993,12 @@ export default function BuyeoTimeDetective() {
       setFeedback({ type: 'success', message: quiz.successMessage });
       setDialogueStep(stage.dialogues.length); // 클리어 대화 시작
     } else {
-      setAttempts((n) => n + 1);
+      setAttemptsByStage((m) => ({ ...m, [stage.id]: (m[stage.id] || 0) + 1 }));
       setMistakeCount((n) => n + 1);
       setFeedback({ type: 'fail', message: quiz.failMessage });
       setShakeKey((k) => k + 1);
+      if (quiz.type === 'choice') setSelectedChoice(null);
+      if (sfxOn) Sound.wrong();
     }
   };
 
@@ -712,12 +1012,11 @@ export default function BuyeoTimeDetective() {
     if (!isPlayable || isCleared) return;
     clearStage(stage);
     setFeedback({ type: 'success', message: '[테스트] 이 장소를 정답 처리했습니다.' });
-    setDialogueStep(stage.dialogues.length + stage.clearDialogues.length - 1);
+    setDialogueStep(stage.dialogues.length + buildClearDialogues(stage, [...visitedStages, stage.id]).length - 1);
   };
 
   const testFinishAll = () => {
     setVisitedStages(STAGES.map((s) => s.id));
-    setInventory(STAGES.map(rewardOf));
     setCompletedAt(new Date());
     enterEnding();
   };
@@ -764,6 +1063,7 @@ export default function BuyeoTimeDetective() {
               <p className="font-body text-[15px] leading-7 text-[#d9ccb0]">
                 국립부여박물관의 <b className="text-[#f3e7c9]">백제금동대향로</b>에 깃든 일곱 봉인이 풀려 부여의 유적지로 흩어졌습니다.
                 특별 수사관인 당신은 각 장소를 탐방하고 단서를 풀어 봉인을 되찾아야 합니다.
+                막히는 곳이 있으면 다른 유적지부터 먼저 조사해도 괜찮습니다.
               </p>
               <ul className="font-body mt-4 grid grid-cols-2 gap-2 text-[13px] text-[#b8a888]">
                 {STAGES.map((s) => {
@@ -777,12 +1077,33 @@ export default function BuyeoTimeDetective() {
                 })}
               </ul>
             </div>
-            <button
-              onClick={startGame}
-              className="font-body mt-8 inline-flex items-center gap-2 rounded-full bg-[#e2b85c] px-8 py-3.5 text-base font-bold text-[#1a140c] transition hover:bg-[#f0cb75] focus:outline-none focus-visible:ring-4 focus-visible:ring-[#e2b85c]/40 active:scale-[0.98]"
-            >
-              수사 시작하기 <ChevronRight className="h-5 w-5" />
-            </button>
+            {canResume ? (
+              <div className="mt-8 flex flex-col items-center gap-3">
+                <button
+                  onClick={resumeGame}
+                  className="font-body inline-flex items-center gap-2 rounded-full bg-[#e2b85c] px-8 py-3.5 text-base font-bold text-[#1a140c] transition hover:bg-[#f0cb75] focus:outline-none focus-visible:ring-4 focus-visible:ring-[#e2b85c]/40 active:scale-[0.98]"
+                >
+                  이어서 수사하기 <span className="font-normal tabular-nums opacity-80">(봉인 {visitedStages.length}/{TOTAL})</span>
+                  <ChevronRight className="h-5 w-5" />
+                </button>
+                <button
+                  onClick={() => {
+                    if (window.confirm('지금까지 모은 봉인이 모두 사라져요. 처음부터 다시 시작할까요?')) startGame();
+                  }}
+                  className="font-body inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm text-[#b8a888] transition hover:bg-white/5 hover:text-[#e8dcc0] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#e2b85c]/50"
+                >
+                  <RotateCcw className="h-4 w-4" /> 처음부터 새로 시작
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={startGame}
+                className="font-body mt-8 inline-flex items-center gap-2 rounded-full bg-[#e2b85c] px-8 py-3.5 text-base font-bold text-[#1a140c] transition hover:bg-[#f0cb75] focus:outline-none focus-visible:ring-4 focus-visible:ring-[#e2b85c]/40 active:scale-[0.98]"
+              >
+                수사 시작하기 <ChevronRight className="h-5 w-5" />
+              </button>
+            )}
+            <p className="font-body mt-4 text-xs text-[#7d6f57]">진행 상황은 이 기기의 브라우저에 자동으로 저장됩니다.</p>
           </div>
         </div>
       </Shell>
@@ -832,20 +1153,45 @@ export default function BuyeoTimeDetective() {
             </span>
           </div>
           <button
-            onClick={() => {
-              setTestMode((v) => !v);
-              setRevealAnswer(false);
-            }}
-            aria-pressed={testMode}
-            title="테스트 모드 (검수용 빠른 클리어)"
-            className={`font-body inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-1.5 text-[11px] transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#e2b85c]/60 ${testMode
-              ? 'border-[#d9a441] bg-[#d9a441]/20 text-[#f3cf7a]'
-              : 'border-[#3a2f20] text-[#7d6f57] hover:border-[#5a4a32] hover:text-[#b8a888]'
+            onClick={() => toggleSetting('sfx')}
+            aria-pressed={sfxOn}
+            aria-label={sfxOn ? '효과음 끄기' : '효과음 켜기'}
+            title={sfxOn ? '효과음 끄기' : '효과음 켜기'}
+            className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#e2b85c]/60 ${sfxOn ? 'border-[#5a4a32] text-[#e2b85c]' : 'border-[#3a2f20] text-[#6f6350]'
               }`}
           >
-            <FlaskConical className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">테스트</span>
+            {sfxOn ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
           </button>
+          {Speech.supported && (
+            <button
+              onClick={() => toggleSetting('voice')}
+              aria-pressed={voiceOn}
+              aria-label={voiceOn ? '대사 음성 끄기' : '대사 음성 켜기'}
+              title={voiceOn ? '대사 음성 끄기' : '대사 음성 켜기'}
+              className={`relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full border transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#e2b85c]/60 ${voiceOn ? 'border-[#5a4a32] text-[#e2b85c]' : 'border-[#3a2f20] text-[#6f6350]'
+                }`}
+            >
+              <SpeechIcon className="h-4 w-4" />
+              {!voiceOn && <span className="absolute h-[1.5px] w-5 rotate-45 rounded bg-current" aria-hidden="true" />}
+            </button>
+          )}
+          {TEST_ENABLED && (
+            <button
+              onClick={() => {
+                setTestMode((v) => !v);
+                setRevealAnswer(false);
+              }}
+              aria-pressed={testMode}
+              title="테스트 모드 (검수용 빠른 클리어)"
+              className={`font-body inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-1.5 text-[11px] transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#e2b85c]/60 ${testMode
+                ? 'border-[#d9a441] bg-[#d9a441]/20 text-[#f3cf7a]'
+                : 'border-[#3a2f20] text-[#7d6f57] hover:border-[#5a4a32] hover:text-[#b8a888]'
+                }`}
+            >
+              <FlaskConical className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">테스트</span>
+            </button>
+          )}
           <button
             onClick={() => setNotebookOpen(true)}
             className="font-body relative inline-flex shrink-0 items-center gap-1.5 rounded-full bg-[#e2b85c] px-3 py-1.5 text-xs font-bold text-[#1a140c] transition hover:bg-[#f0cb75] focus:outline-none focus-visible:ring-4 focus-visible:ring-[#e2b85c]/40 sm:px-4 sm:text-sm"
@@ -868,7 +1214,7 @@ export default function BuyeoTimeDetective() {
               <span className="inline-flex items-center gap-1 font-bold text-[#f3cf7a]">
                 <FlaskConical className="h-3.5 w-3.5" /> 테스트 모드
               </span>
-              <span className="text-[#b8a888]">지도에서 모든 장소로 이동할 수 있어요.</span>
+              <span className="text-[#b8a888]">정답 보기와 즉시 클리어를 쓸 수 있어요.</span>
               <div className="flex flex-wrap gap-1.5 sm:ml-auto">
                 <button
                   onClick={testClearCurrent}
@@ -970,6 +1316,14 @@ export default function BuyeoTimeDetective() {
                 key={stage.id}
                 speaker={activeDialogue.speaker}
                 text={activeDialogue.text}
+                narration={activeDialogue.speaker === NARRATOR}
+                voiceOn={voiceOn}
+                sfxOn={sfxOn}
+                voiceProfile={
+                  activeDialogue.speaker.startsWith('수사관')
+                    ? HERO_VOICE[heroMode]
+                    : VOICE[activeDialogue.speaker] || { pitch: 1, rate: 1 }
+                }
                 avatar={
                   activeDialogue.speaker.startsWith('수사관')
                     ? heroMode === 'human'
@@ -983,7 +1337,7 @@ export default function BuyeoTimeDetective() {
                 accent={theme.accent}
                 progress={
                   isCleared
-                    ? `${clearStep + 1} / ${stage.clearDialogues.length}`
+                    ? `${clearStep + 1} / ${clearDialogues.length}`
                     : `${Math.min(dialogueStep + 1, stage.dialogues.length)} / ${stage.dialogues.length}`
                 }
                 canNext={(!isCleared && !introDone) || (isCleared && !clearDialoguesDone)}
@@ -1014,6 +1368,19 @@ export default function BuyeoTimeDetective() {
                 shakeKey={shakeKey}
                 revealAnswer={testMode && revealAnswer}
               />
+            )}
+
+            {/* 막혔을 때: 다른 유적지 먼저 조사하기 */}
+            {showQuiz && nextStage && (
+              <div className="font-body flex flex-col gap-2 rounded-2xl border border-[#3a2f20] bg-[#1d1813] px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-[#b8a888]">막혔나요? 순서와 상관없이 다른 유적지부터 조사해도 돼요.</p>
+                <button
+                  onClick={() => goToStage(nextStage)}
+                  className="inline-flex shrink-0 items-center justify-center gap-1 rounded-full border border-[#6b5636] px-4 py-2 text-[#e8dcc0] transition hover:border-[#e2b85c] hover:text-[#f6ecd2] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#e2b85c]/60"
+                >
+                  {nextStage.name} 먼저 가기 <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
             )}
 
             {/* 피드백 */}
@@ -1085,11 +1452,11 @@ export default function BuyeoTimeDetective() {
                 {visitedStages.length}/{TOTAL} 클리어
               </span>
             </div>
+            <p className="font-body mb-3 px-1 text-xs text-[#9c8c6e]">순서와 상관없이 원하는 유적지부터 조사할 수 있어요.</p>
             <ol className="relative flex flex-col gap-1.5">
               {/* 경로선 */}
               <span className="pointer-events-none absolute bottom-6 left-[27px] top-6 w-px bg-gradient-to-b from-[#e2b85c]/50 via-[#4a3b26] to-[#4a3b26]" />
               {STAGES.map((s) => {
-                const unlocked = isUnlocked(s);
                 const cleared = visitedStages.includes(s.id);
                 const current = s.id === currentStageId;
                 const I = THEME[s.id].icon;
@@ -1097,13 +1464,10 @@ export default function BuyeoTimeDetective() {
                   <li key={s.id}>
                     <button
                       onClick={() => goToStage(s)}
-                      disabled={!unlocked}
                       aria-current={current ? 'location' : undefined}
                       className={`font-body relative flex w-full items-center gap-3 rounded-2xl px-2 py-2 text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#e2b85c]/60 ${current
                         ? 'bg-[#e2b85c]/15 ring-1 ring-[#e2b85c]/50'
-                        : unlocked
-                          ? 'hover:bg-white/5'
-                          : 'cursor-not-allowed opacity-50'
+                        : 'hover:bg-white/5'
                         }`}
                     >
                       <span
@@ -1116,10 +1480,8 @@ export default function BuyeoTimeDetective() {
                       >
                         {cleared ? (
                           <CheckCircle2 className="h-5 w-5 text-[#8fd19a]" />
-                        ) : unlocked ? (
-                          <I className="h-5 w-5" style={{ color: THEME[s.id].accent }} />
                         ) : (
-                          <Lock className="h-4 w-4 text-[#7d6f57]" />
+                          <I className="h-5 w-5" style={{ color: THEME[s.id].accent }} />
                         )}
                       </span>
                       <span className="min-w-0 flex-1">
@@ -1128,7 +1490,7 @@ export default function BuyeoTimeDetective() {
                           <span className={`truncate text-sm font-bold ${current ? 'text-[#f6ecd2]' : 'text-[#e0d3b6]'}`}>{s.name}</span>
                         </span>
                         <span className="block truncate text-xs text-[#9c8c6e]">
-                          {cleared ? `회수: ${s.rewardItem.name}` : unlocked ? s.era : '이전 거점의 봉인을 회수하면 열립니다'}
+                          {cleared ? `회수: ${s.rewardItem.name}` : s.era}
                         </span>
                       </span>
                       {current && <span className="shrink-0 rounded-full bg-[#e2b85c] px-2 py-0.5 text-[10px] font-bold text-[#1a140c]">현재</span>}
@@ -1219,6 +1581,25 @@ function Shell({ children }) {
         .portrait-in { animation: portraitIn .4s cubic-bezier(.2,.8,.3,1) both; }
         @keyframes nudgeRight { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(3px); } }
         .nudge-right { animation: nudgeRight 1s ease-in-out infinite; }
+
+        /* 말하는 입 뻐끔뻐끔 + 살짝 끄덕임 */
+        .talk-mouth {
+          position: absolute; aspect-ratio: 2 / 1.15; border-radius: 50%;
+          background: radial-gradient(ellipse at 50% 80%, #d0675a 0 30%, #6b1f18 58%, #2b0b08 100%);
+          box-shadow: 0 0 0 1px rgba(70, 25, 18, .45);
+          transform: translate(-50%, -50%) scaleY(0); opacity: 0;
+          transition: opacity .15s, transform .15s;
+        }
+        .talk-mouth.is-talking { opacity: 1; animation: mouthFlap .32s ease-in-out infinite; }
+        @keyframes mouthFlap {
+          0%   { transform: translate(-50%, -50%) scaleY(.15); }
+          30%  { transform: translate(-50%, -50%) scaleY(.9); }
+          55%  { transform: translate(-50%, -50%) scaleY(.35); }
+          80%  { transform: translate(-50%, -50%) scaleY(.75); }
+          100% { transform: translate(-50%, -50%) scaleY(.15); }
+        }
+        @keyframes talkBob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-1.5px) rotate(-.3deg); } }
+        .talk-bob { animation: talkBob .64s ease-in-out infinite; }
         @keyframes rewardPop { 0% { opacity: 0; transform: scale(.6); } 60% { opacity: 1; transform: scale(1.05); } 100% { opacity: 1; transform: scale(1); } }
         .reward-pop { animation: rewardPop .55s cubic-bezier(.2,.9,.3,1.2) both; }
         @keyframes twinkleLoop { 0%, 100% { opacity: 0; transform: scale(.3) rotate(0deg); } 50% { opacity: 1; transform: scale(1) rotate(60deg); } }
@@ -1744,21 +2125,35 @@ function PortraitSilhouette({ tone, variant }) {
 
 const PORTRAIT_TONE = { beast: '#ffd34d', human: '#f6dc94' };
 
-function CharacterPortrait({ src, name, variant = 'npc', accent, className = '' }) {
+function CharacterPortrait({ src, name, variant = 'npc', accent, className = '', talking = false }) {
   const tone = PORTRAIT_TONE[variant] || accent;
+  const mouth = mouthOf(src);
   return (
     <div className={`portrait-in ${className}`}>
       <div
         className={`relative h-full w-full rounded-2xl p-[2px] shadow-[0_14px_30px_-10px_rgba(0,0,0,0.8)] ${variant === 'human' ? 'aura-glow' : ''}`}
         style={{ background: `linear-gradient(160deg, ${tone}, #3a2a17 55%, ${tone}99)` }}
       >
-        <SmartImage
-          src={src}
-          alt={`${name} 캐릭터`}
-          className="h-full w-full rounded-[14px] bg-[#120f0c]"
-          imgClassName="object-cover object-top"
-          fallback={<PortraitSilhouette tone={tone} variant={variant} />}
-        />
+        <div className={`relative h-full w-full ${talking ? 'talk-bob' : ''}`}>
+          <SmartImage
+            src={src}
+            alt={`${name} 캐릭터`}
+            className="h-full w-full rounded-[14px] bg-[#120f0c]"
+            imgClassName="object-cover object-top"
+            fallback={<PortraitSilhouette tone={tone} variant={variant} />}
+          />
+          {/* 말하는 입: 이미지(3:4)와 같은 비율의 상자를 위쪽 기준으로 겹쳐 입 위치를 맞춤 */}
+          {mouth && (
+            <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-[14px]" aria-hidden="true">
+              <div className="absolute left-1/2 top-0 h-full -translate-x-1/2" style={{ aspectRatio: '3 / 4' }}>
+                <span
+                  className={`talk-mouth ${talking ? 'is-talking' : ''}`}
+                  style={{ left: `${mouth.x}%`, top: `${mouth.y}%`, width: `${mouth.w}%` }}
+                />
+              </div>
+            </div>
+          )}
+        </div>
         <div className="pointer-events-none absolute inset-x-[2px] bottom-[2px] h-1/3 rounded-b-[14px] bg-gradient-to-t from-black/55 to-transparent" />
       </div>
     </div>
@@ -1980,21 +2375,13 @@ function NameTag({ name, isPlayer }) {
   );
 }
 
-/* 타자기 효과 (모션 줄이기 설정이면 즉시 표시) */
-function useTypewriter(text, speed = 28) {
-  const reduce = useMemo(
-    () => typeof window !== 'undefined' && !!window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches,
-    []
-  );
-  const [state, setState] = useState({ text, count: reduce ? text.length : 0 });
+/* 타자기 효과 (대사 상자를 누르면 한 번에 다 보기) */
+function useTypewriter(text, speed = 40) {
+  const [state, setState] = useState({ text, count: 0 });
   // 대사가 바뀐 첫 렌더에서도 이전 길이로 번쩍이지 않도록 text 기준으로 계산
-  const count = state.text === text ? state.count : reduce ? text.length : 0;
+  const count = state.text === text ? state.count : 0;
 
   useEffect(() => {
-    if (reduce) {
-      setState({ text, count: text.length });
-      return undefined;
-    }
     setState({ text, count: 0 });
     const id = setInterval(() => {
       setState((st) => {
@@ -2006,18 +2393,109 @@ function useTypewriter(text, speed = 28) {
       });
     }, speed);
     return () => clearInterval(id);
-  }, [text, speed, reduce]);
+  }, [text, speed]);
 
   const done = count >= text.length;
   return [text.slice(0, count), done, () => setState({ text, count: text.length })];
 }
 
 /* 비주얼 노벨 스타일 대화창 */
-function DialogueBox({ speaker, text, avatar, heroMode = 'beast', npcRole, isPlayer, accent, progress, canNext, nextLabel, onNext, waitingLabel }) {
+function DialogueBox({
+  speaker,
+  text,
+  avatar,
+  heroMode = 'beast',
+  npcRole,
+  isPlayer,
+  narration = false,
+  accent,
+  progress,
+  canNext,
+  nextLabel,
+  onNext,
+  waitingLabel,
+  voiceOn = false,
+  sfxOn = false,
+  voiceProfile,
+}) {
   const variant = isPlayer ? heroMode : 'npc';
   const displayName = isPlayer ? HERO_NAME : speaker;
   const [shown, done, skip] = useTypewriter(text);
+  const [speaking, setSpeaking] = useState(false);
+  const pitch = voiceProfile?.pitch ?? 1;
+  const rate = voiceProfile?.rate ?? 1;
+
+  // 음성 읽기: 대사가 바뀔 때마다 새로 읽고, 넘기면 바로 멈춤
+  useEffect(() => {
+    if (!voiceOn) return undefined;
+    Speech.speak(text, { pitch, rate }, () => setSpeaking(true), () => setSpeaking(false));
+    return () => {
+      Speech.stop();
+      setSpeaking(false);
+    };
+  }, [text, voiceOn, pitch, rate]);
+
+  // 음성이 꺼져 있으면 글자가 찍힐 때 '톡톡' 타자 소리 (인물 목소리 높낮이 반영)
+  useEffect(() => {
+    if (!sfxOn || voiceOn || done || shown.length % 2 !== 1) return;
+    if (/\s/.test(shown[shown.length - 1])) return;
+    Sound.blip(narration ? 0.8 : pitch);
+  }, [shown, sfxOn, voiceOn, done, narration, pitch]);
+
   const advance = () => (done ? onNext() : skip());
+  const talking = !narration && (!done || speaking);
+
+  const nextButton = (
+    <div className="relative mt-3 flex min-h-[40px] items-center justify-end">
+      {canNext ? (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            advance();
+          }}
+          className="font-body inline-flex items-center gap-1.5 rounded-full border border-[#e2b85c]/50 bg-[#e2b85c]/10 px-4 py-2 text-sm font-bold text-[#e2b85c] transition hover:bg-[#e2b85c]/20 focus:outline-none focus-visible:ring-4 focus-visible:ring-[#e2b85c]/30"
+        >
+          {nextLabel} <ChevronRight className={`h-4 w-4 ${done ? 'nudge-right' : ''}`} />
+        </button>
+      ) : (
+        waitingLabel &&
+        done && (
+          <span className="font-body inline-flex items-center gap-1.5 text-xs text-[#9c8c6e]">
+            <ScrollText className="h-4 w-4" /> {waitingLabel}
+          </span>
+        )
+      )}
+    </div>
+  );
+
+  // 나레이션: 초상화 없이 장면을 설명하는 해설 상자
+  if (narration) {
+    return (
+      <section className="anim-fade-up relative" aria-label="나레이션">
+        <div
+          onClick={!done ? skip : undefined}
+          className="relative rounded-2xl border border-dashed border-[#6b5636] bg-[#120f0c]/80 px-5 pb-4 pt-5 sm:px-8"
+        >
+          <div className="font-body flex items-center justify-between gap-2 text-xs">
+            <span className="inline-flex items-center gap-1.5 tracking-[0.2em] text-[#c9a96b]">
+              <ScrollText className="h-3.5 w-3.5" /> 나레이션
+            </span>
+            <span className="shrink-0 tabular-nums text-[#7d6f57]">{progress}</span>
+          </div>
+          <p className="font-display relative mt-3 text-center text-[16px] leading-8 text-[#e8dcc0] sm:text-lg sm:leading-9">
+            <span className="invisible" aria-hidden="true">
+              {text}
+            </span>
+            <span className="absolute inset-0" aria-live="polite">
+              {shown}
+              {!done && <span className="type-caret text-[#c9a96b]">▍</span>}
+            </span>
+          </p>
+          {nextButton}
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="anim-fade-up relative pt-20 sm:pt-16" aria-label="대화">
@@ -2028,6 +2506,7 @@ function DialogueBox({ speaker, text, avatar, heroMode = 'beast', npcRole, isPla
         name={displayName}
         variant={variant}
         accent={accent}
+        talking={talking}
         className="absolute left-3 top-0 z-10 h-32 w-24 sm:bottom-0 sm:left-4 sm:top-auto sm:h-60 sm:w-40"
       />
 
@@ -2059,26 +2538,7 @@ function DialogueBox({ speaker, text, avatar, heroMode = 'beast', npcRole, isPla
           </span>
         </p>
 
-        <div className="relative mt-3 flex min-h-[40px] items-center justify-end">
-          {canNext ? (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                advance();
-              }}
-              className="font-body inline-flex items-center gap-1.5 rounded-full border border-[#e2b85c]/50 bg-[#e2b85c]/10 px-4 py-2 text-sm font-bold text-[#e2b85c] transition hover:bg-[#e2b85c]/20 focus:outline-none focus-visible:ring-4 focus-visible:ring-[#e2b85c]/30"
-            >
-              {nextLabel} <ChevronRight className={`h-4 w-4 ${done ? 'nudge-right' : ''}`} />
-            </button>
-          ) : (
-            waitingLabel &&
-            done && (
-              <span className="font-body inline-flex items-center gap-1.5 text-xs text-[#9c8c6e]">
-                <ScrollText className="h-4 w-4" /> {waitingLabel}
-              </span>
-            )
-          )}
-        </div>
+        {nextButton}
       </div>
     </section>
   );
@@ -2160,6 +2620,21 @@ function QuizPanel({
   const shakeRef = useRef(null);
   const inputRef = useRef(null);
 
+  // 두 번 틀리면 두 번째 힌트: 주관식은 글자 수·첫 글자, 객관식은 오답 두 개 지우기
+  const secondHint = attempts >= SECOND_HINT_AFTER;
+  const eliminated = useMemo(() => {
+    if (!secondHint || quiz.type !== 'choice') return [];
+    return quiz.choices.filter((c) => !quiz.answers.some((a) => normalize(a) === normalize(c))).slice(0, 2);
+  }, [secondHint, quiz]);
+  const secondHintText = !secondHint
+    ? null
+    : quiz.type === 'choice'
+      ? `틀린 선택지 ${eliminated.length}개를 지웠어요. 남은 것 중에 정답이 있어요.`
+      : (() => {
+        const a = String(quiz.answers[0]).replace(/\s+/g, '');
+        return `정답은 ${a.length}글자이고, 첫 글자는 '${a[0]}' 자예요.`;
+      })();
+
   // 오답일 때 입력창/선택지를 좌우로 흔들기 (포커스를 잃지 않도록 클래스만 다시 붙임)
   useEffect(() => {
     const el = shakeRef.current;
@@ -2204,10 +2679,13 @@ function QuizPanel({
                   role="radio"
                   aria-checked={selectedChoice === c}
                   key={c}
+                  disabled={eliminated.includes(c)}
                   onClick={() => setSelectedChoice(c)}
-                  className={`font-body flex items-center gap-2.5 rounded-xl border px-4 py-3 text-left text-sm transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#e2b85c]/60 ${selectedChoice === c
-                    ? 'border-[#e2b85c] bg-[#e2b85c]/15 text-[#f6ecd2]'
-                    : 'border-[#4a3b26] bg-[#1a1612] text-[#d9ccb0] hover:border-[#6b5636]'
+                  className={`font-body flex items-center gap-2.5 rounded-xl border px-4 py-3 text-left text-sm transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#e2b85c]/60 ${eliminated.includes(c)
+                    ? 'cursor-not-allowed border-[#2e261b] bg-transparent text-[#5f5544] line-through'
+                    : selectedChoice === c
+                      ? 'border-[#e2b85c] bg-[#e2b85c]/15 text-[#f6ecd2]'
+                      : 'border-[#4a3b26] bg-[#1a1612] text-[#d9ccb0] hover:border-[#6b5636]'
                     }`}
                 >
                   <span
@@ -2258,6 +2736,21 @@ function QuizPanel({
           <Lightbulb className="mt-0.5 h-4 w-4 shrink-0 text-[#e2b85c]" />
           <span>{quiz.hint}</span>
         </div>
+      )}
+
+      {secondHint ? (
+        <div className="font-body anim-fade-up mt-3 flex items-start gap-2 rounded-xl border border-[#e2b85c]/30 bg-[#e2b85c]/15 p-3 text-sm leading-6 text-[#f3e2b4]">
+          <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-[#e2b85c]" />
+          <span>
+            <b className="text-[#f6ecd2]">두 번째 힌트</b> · {secondHintText}
+          </span>
+        </div>
+      ) : (
+        attempts > 0 && (
+          <p className="font-body mt-3 text-xs text-[#9c8c6e]">
+            {SECOND_HINT_AFTER - attempts}번 더 틀리면 두 번째 힌트가 열려요.
+          </p>
+        )
       )}
     </section>
   );
