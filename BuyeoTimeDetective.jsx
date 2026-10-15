@@ -1151,9 +1151,10 @@ export default function BuyeoTimeDetective() {
       <Shell>
         <div className="flex min-h-screen items-center justify-center px-4 py-10">
           <div className="anim-pop w-full max-w-xl text-center">
-            <div className="relative mx-auto mb-6 h-36 w-24">
-              <div className="halo-pulse absolute -inset-8 rounded-full bg-[radial-gradient(circle,rgba(226,184,92,0.35),transparent_65%)]" />
-              <CenserIllustration className="relative h-full w-full" />
+            {/* 금동대향로: 위쪽은 연기가 피어오르는 여백 */}
+            <div className="relative mx-auto -mt-6 mb-2 h-[19rem] w-[8.8rem] sm:h-[23rem] sm:w-[10.6rem]">
+              <div className="halo-pulse absolute -inset-x-16 bottom-0 top-1/4 rounded-full bg-[radial-gradient(circle,rgba(226,184,92,0.3),transparent_65%)]" />
+              <CenserIllustration className="relative h-full w-full drop-shadow-[0_0_24px_rgba(246,220,148,0.35)]" />
             </div>
             <p className="font-body text-xs tracking-[0.3em] text-[#c9a96b]">BUYEO TIME DETECTIVE</p>
             <h1 className="font-display mt-3 text-3xl leading-tight text-[#f3e7c9] sm:text-4xl" style={{ textWrap: 'balance' }}>
@@ -1681,6 +1682,20 @@ function Shell({ children }) {
         @keyframes nudgeRight { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(3px); } }
         .nudge-right { animation: nudgeRight 1s ease-in-out infinite; }
 
+        /* 금동대향로 향 연기 · 불씨 · 은은한 빛 */
+        @keyframes censerPuff {
+          0% { transform: translate(0, 0) scale(.5); opacity: 0; }
+          12% { opacity: .6; }
+          100% { transform: translate(var(--dx), -190px) scale(3.6); opacity: 0; }
+        }
+        .censer-puff { transform-box: fill-box; transform-origin: center; animation: censerPuff var(--dur) var(--delay) ease-out infinite; }
+        @keyframes censerWisp { 0% { stroke-dashoffset: 220; opacity: 0; } 20% { opacity: .7; } 100% { stroke-dashoffset: 0; opacity: 0; } }
+        .censer-wisp { stroke-dasharray: 220; animation: censerWisp var(--dur) var(--delay) ease-in-out infinite; }
+        @keyframes censerEmber { 0% { transform: translate(0, 0); opacity: 0; } 20% { opacity: 1; } 100% { transform: translate(var(--dx), -120px); opacity: 0; } }
+        .censer-ember { animation: censerEmber var(--dur) var(--delay) ease-out infinite; }
+        @keyframes censerGlow { 0%, 100% { opacity: .65; } 50% { opacity: 1; } }
+        .censer-glow { animation: censerGlow 4s ease-in-out infinite; }
+
         /* 말하는 입 뻐끔뻐끔 + 살짝 끄덕임 */
         .talk-mouth {
           position: absolute; aspect-ratio: 2 / 1.15; border-radius: 50%;
@@ -1856,67 +1871,163 @@ function Celebration({ big = false }) {
 }
 
 /* 백제금동대향로 상징 일러스트 (SVG) */
+/* 백제금동대향로 (실물 참고): 봉황 · 겹겹의 산 뚜껑 · 연꽃 몸체 · 똬리 튼 용 받침 + 피어오르는 향 연기
+ * 장식 SVG라 문자열로 만들어 넣습니다. 연기 애니메이션은 Shell 의 censer-* 스타일을 씁니다. */
+function censerMarkup(uid, smoke) {
+  const g = (n) => `${uid}-${n}`;
+  // 뚜껑의 겹겹 산봉우리
+  const rows = [
+    [98, 14, 16], [109, 15, 17], [121, 17, 19], [134, 18, 21], [148, 20, 23], [163, 21, 25], [179, 23, 27], [196, 24, 29], [206, 22, 30],
+  ];
+  let seed = 7;
+  const rnd = () => ((seed = (seed * 9301 + 49297) % 233280) / 233280);
+  let peaks = '';
+  rows.forEach(([b, h0, w0], r) => {
+    const off = r % 2 ? w0 / 2 : 0;
+    const hw = 80 * Math.sqrt(Math.max(0, 1 - ((204 - b) / 122) ** 2));
+    for (let x = 120 - hw + w0 * 0.3 + off * 0.5 + rnd() * 3; x <= 120 + hw - w0 * 0.3; x += w0 * (0.85 + rnd() * 0.3)) {
+      const h = h0 * (0.8 + rnd() * 0.45);
+      const w = w0 * (0.9 + rnd() * 0.25);
+      const lean = (rnd() - 0.5) * w * 0.35;
+      const tx = x + lean;
+      peaks += `<path d="M${x - w / 2 - 1} ${b} C${x - w / 3} ${b - h * 0.5} ${tx - w / 6} ${b - h * 0.9} ${tx} ${b - h} C${tx + w / 6} ${b - h * 0.85} ${x + w / 3} ${b - h * 0.45} ${x + w / 2 + 1} ${b} Z" fill="url(#${g('peak')})" stroke="#5e3b12" stroke-width=".9"/>`;
+      peaks += `<path d="M${tx} ${b - h + 2} C${tx - w / 10} ${b - h * 0.6} ${x - w / 6} ${b - h * 0.3} ${x - w / 4} ${b - 2}" fill="none" stroke="#fff3c4" stroke-width=".8" opacity=".6"/>`;
+      if (rnd() < 0.28) peaks += `<circle cx="${tx + w * 0.12}" cy="${b - h * 0.55}" r="${1 + rnd()}" fill="#7a5220"/>`;
+    }
+  });
+  // 연꽃잎 (뒷줄 → 앞줄)
+  const petal = (x, top, bottom, wd) =>
+    `<path d="M${x} ${bottom} C${x - wd} ${bottom - 14} ${x - wd} ${top + 16} ${x} ${top} C${x + wd} ${top + 16} ${x + wd} ${bottom - 14} ${x} ${bottom} Z" fill="url(#${g('petal')})" stroke="#5e3b12" stroke-width="1"/>
+     <path d="M${x} ${top + 6} L${x} ${bottom - 8}" stroke="#7a5220" stroke-width=".9" opacity=".7"/>`;
+  let petals = '';
+  [52, 72, 92, 112, 132, 152, 172, 192].forEach((x) => (petals += petal(x - 2, 208, 262, 13)));
+  [42, 62, 82, 102, 122, 142, 162, 182, 202].forEach((x) => (petals += petal(x, 222, 274, 12)));
+  [70, 95, 120, 145, 170].forEach((x) => (petals += petal(x, 238, 282, 13)));
+  // 연기 덩어리와 실연기
+  const puffs = [
+    [120, 80, 9, 7.0, 0, -10], [120, 80, 10, 6.2, 1.6, 12], [120, 80, 8, 7.6, 3.2, -4], [120, 80, 9, 6.8, 4.8, 8],
+    [98, 104, 7, 6.6, 0.8, -24], [142, 104, 7, 6.8, 2.6, 22], [98, 104, 6, 7.4, 4.4, -16], [142, 104, 6, 7.2, 5.6, 18],
+    [84, 128, 6, 7.2, 1.9, -30], [156, 128, 6, 7.0, 3.7, 30],
+  ].map(([x, y, r, dur, delay, dx]) => `<circle class="censer-puff" cx="${x}" cy="${y}" r="${r}" fill="#fff4dc" style="--dur:${dur}s;--delay:${delay}s;--dx:${dx}px"/>`).join('');
+  const wisps = [
+    ['M120 80 C110 60 132 46 118 26 C106 10 126 -6 116 -24', 5.5, 0],
+    ['M98 104 C86 86 104 72 92 54 C82 40 96 26 88 8', 6.5, 1.8],
+    ['M142 104 C154 86 136 72 148 54 C158 40 144 26 152 8', 6.2, 3.4],
+  ].map(([d, dur, delay]) => `<path class="censer-wisp" d="${d}" fill="none" stroke="#f6ecd2" stroke-width="2.2" stroke-linecap="round" style="--dur:${dur}s;--delay:${delay}s"/>`).join('');
+  const embers = [[108, 120, 5, 0, -14], [134, 110, 6, 1.5, 12], [90, 150, 5.5, 2.6, -18], [150, 145, 6.4, 3.8, 16], [120, 95, 4.8, 4.6, 4]]
+    .map(([x, y, dur, delay, dx]) => `<circle class="censer-ember" cx="${x}" cy="${y}" r="1.4" fill="#ffd77a" style="--dur:${dur}s;--delay:${delay}s;--dx:${dx}px"/>`).join('');
+
+  return `<svg viewBox="0 -120 240 520" width="100%" height="100%" style="overflow:visible" role="img" aria-label="백제금동대향로">
+  <defs>
+    <linearGradient id="${g('gilt')}" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#4f3311"/><stop offset=".16" stop-color="#a8742c"/><stop offset=".36" stop-color="#ffe7a3"/>
+      <stop offset=".5" stop-color="#f0c45f"/><stop offset=".74" stop-color="#b37c2c"/><stop offset="1" stop-color="#4f3311"/>
+    </linearGradient>
+    <linearGradient id="${g('peak')}" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff0bd"/><stop offset=".45" stop-color="#e2b85c"/><stop offset="1" stop-color="#7a5220"/>
+    </linearGradient>
+    <linearGradient id="${g('petal')}" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffe9a8"/><stop offset=".55" stop-color="#d9a648"/><stop offset="1" stop-color="#7a5220"/>
+    </linearGradient>
+    <radialGradient id="${g('glow')}" cx=".5" cy=".5" r=".5">
+      <stop offset="0" stop-color="#ffd98a" stop-opacity=".55"/><stop offset=".5" stop-color="#e2b85c" stop-opacity=".18"/><stop offset="1" stop-color="#e2b85c" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="${g('pearl')}" cx=".35" cy=".35" r=".7"><stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#f0c86a"/></radialGradient>
+    <clipPath id="${g('lid')}"><path d="M44 202 C40 150 68 96 120 84 C172 96 200 150 196 202 Z"/></clipPath>
+    <clipPath id="${g('bowl')}"><path d="M44 206 C44 256 82 286 120 286 C158 286 196 256 196 206 Z"/></clipPath>
+    <filter id="${g('smoke')}" x="-50%" y="-50%" width="200%" height="200%">
+      <feTurbulence type="fractalNoise" baseFrequency=".035" numOctaves="2" seed="3" result="noise"/>
+      <feDisplacementMap in="SourceGraphic" in2="noise" scale="18" xChannelSelector="R" yChannelSelector="G" result="warped"/>
+      <feGaussianBlur in="warped" stdDeviation="2.6"/>
+    </filter>
+    <linearGradient id="${g('fadeG')}" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#000"/><stop offset=".55" stop-color="#fff"/><stop offset="1" stop-color="#fff"/>
+    </linearGradient>
+    <mask id="${g('fade')}" maskUnits="userSpaceOnUse" x="-40" y="-120" width="320" height="300"><rect x="-40" y="-120" width="320" height="300" fill="url(#${g('fadeG')})"/></mask>
+    <filter id="${g('soft')}"><feGaussianBlur stdDeviation="1.1"/></filter>
+  </defs>
+
+  <ellipse class="censer-glow" cx="120" cy="150" rx="160" ry="230" fill="url(#${g('glow')})"/>
+
+  <!-- 연기 -->
+  ${smoke ? `<g mask="url(#${g('fade')})">
+  <g filter="url(#${g('smoke')})" style="mix-blend-mode:screen">${puffs}</g>
+  <g filter="url(#${g('soft')})" opacity=".9" style="mix-blend-mode:screen">${wisps}</g>
+  </g>` : ''}
+
+  <!-- 용 받침: 몸통 고리 · 다리 · 꼬리 · 머리 -->
+  <ellipse cx="120" cy="388" rx="92" ry="9" fill="#000" opacity=".45"/>
+  <!-- 꼬리 -->
+  <path d="M46 352 C30 332 40 312 56 318 C66 322 62 336 52 334" fill="none" stroke="url(#${g('gilt')})" stroke-width="8" stroke-linecap="round"/>
+  <!-- 몸통 고리 (뒤쪽 → 앞쪽) -->
+  <path d="M44 356 C44 336 196 336 196 356" fill="none" stroke="#8a5f25" stroke-width="18" stroke-linecap="round"/>
+  ${Array.from({ length: 11 }, (_, i) => { const t = Math.PI * (i + 0.5) / 11; const x = 120 - Math.cos(t) * 76; const y = 356 - Math.sin(t) * 22 - 9; return `<path d="M${x - 5} ${y + 3} C${x - 3} ${y - 3} ${x + 1} ${y - 6} ${x + 4} ${y - 5} C${x + 2} ${y - 2} ${x + 3} ${y + 1} ${x + 5} ${y + 3} Z" fill="#d9a648" stroke="#5e3b12" stroke-width=".7"/>`; }).join('')}
+  <path d="M44 356 C58 384 84 364 104 378 C124 392 140 366 160 378 C176 388 192 372 196 356" fill="none" stroke="url(#${g('gilt')})" stroke-width="18" stroke-linecap="round"/>
+  <path d="M44 356 C58 384 84 364 104 378 C124 392 140 366 160 378 C176 388 192 372 196 356" fill="none" stroke="#5e3b12" stroke-width="18" stroke-dasharray="1.5 5" opacity=".28" stroke-linecap="round"/>
+  <path d="M50 360 C62 378 84 360 104 372 C124 384 140 360 160 372 C174 380 186 368 190 360" fill="none" stroke="#fff3c4" stroke-width="1.4" opacity=".6"/>
+  <!-- 다리와 발톱 -->
+  ${[[60, 372, -1], [96, 380, -1], [144, 380, 1], [180, 372, 1]].map(([x, y, s]) =>
+    `<path d="M${x} ${y - 4} C${x + s * 6} ${y + 4} ${x + s * 10} ${y + 6} ${x + s * 14} ${y + 10}" stroke="url(#${g('gilt')})" stroke-width="6" stroke-linecap="round" fill="none"/>
+     <path d="M${x + s * 14} ${y + 10} l${s * 5} -3 M${x + s * 14} ${y + 10} l${s * 6} 2 M${x + s * 14} ${y + 10} l${s * 2} 5" stroke="#c8913a" stroke-width="2" stroke-linecap="round"/>`).join('')}
+  <!-- 목 -->
+  <path d="M184 352 C210 326 194 300 166 304 C150 306 144 300 140 294" fill="none" stroke="url(#${g('gilt')})" stroke-width="16" stroke-linecap="round"/>
+  <path d="M184 352 C210 326 194 300 166 304 C150 306 144 300 140 294" fill="none" stroke="#5e3b12" stroke-width="16" stroke-dasharray="1.5 5" opacity=".28" stroke-linecap="round"/>
+  ${[[200, 322], [194, 306], [180, 300], [162, 300]].map(([x, y]) => `<path d="M${x} ${y} l3 -9 l4 8 Z" fill="#e2b85c" stroke="#5e3b12" stroke-width=".7"/>`).join('')}
+  <!-- 머리: 고개를 들어 향로 기둥을 문 용 -->
+  <path d="M154 286 C166 272 176 270 186 262 M156 292 C170 286 182 288 192 280" stroke="#e2b85c" stroke-width="3" stroke-linecap="round" fill="none"/>
+  <path d="M150 300 C158 302 166 310 168 318 M144 304 C148 312 146 320 152 326" stroke="#c8913a" stroke-width="2.6" stroke-linecap="round" fill="none"/>
+  <path d="M118 296 C122 284 134 278 146 280 C156 282 160 292 156 300 C152 308 140 310 132 306 L122 304 Z" fill="url(#${g('gilt')})" stroke="#5e3b12" stroke-width="1.1"/>
+  <path d="M118 296 C124 300 128 302 132 306" stroke="#5e3b12" stroke-width="1" fill="none"/>
+  <path d="M146 282 C150 276 156 274 160 276" stroke="#5e3b12" stroke-width="1" fill="none"/>
+  <ellipse cx="144" cy="289" rx="3" ry="2.2" fill="#fff3c4"/><circle cx="144.5" cy="289" r="1.3" fill="#2a1a08"/>
+  <path d="M120 302 l3 3 l2 -3 M126 304 l2 3 l2 -3" stroke="#fff3c4" stroke-width=".9" fill="none"/>
+  <!-- 기둥 -->
+  <path d="M110 280 L130 280 L128 298 L112 298 Z" fill="url(#${g('gilt')})" stroke="#5e3b12" stroke-width="1"/>
+
+  <!-- 연꽃 몸체 -->
+  <path d="M44 206 C44 256 82 286 120 286 C158 286 196 256 196 206 Z" fill="#6b4416"/>
+  <g clip-path="url(#${g('bowl')})">${petals}</g>
+  <path d="M44 206 C44 256 82 286 120 286 C158 286 196 256 196 206" fill="none" stroke="#5e3b12" stroke-width="1.2"/>
+
+  <!-- 뚜껑: 겹겹의 산 (박산) -->
+  <path d="M50 204 C46 154 72 102 120 90 C168 102 194 154 190 204 Z" fill="#4f3311"/>
+  <g>${peaks}</g>
+  <!-- 뚜껑과 몸체 사이 띠 -->
+  <rect x="38" y="198" width="164" height="11" rx="5.5" fill="url(#${g('gilt')})" stroke="#5e3b12" stroke-width="1"/>
+  ${Array.from({ length: 15 }, (_, i) => `<circle cx="${46 + i * 10.6}" cy="203.5" r="1.5" fill="#fff3c4" opacity=".75"/>`).join('')}
+
+  <!-- 연기 구멍 -->
+  ${[[98, 104], [142, 104], [84, 128], [156, 128]].map(([x, y]) => `<ellipse cx="${x}" cy="${y}" rx="2.6" ry="1.8" fill="#1d1206"/>`).join('')}
+
+  <!-- 봉황 -->
+  <g>
+    <!-- 꼬리 깃 (뒤로 높이 솟음) -->
+    <path d="M124 70 C140 52 150 30 140 8 C150 14 158 30 152 46 C164 36 170 22 166 6 C178 22 172 46 150 62 C142 68 132 72 124 74 Z" fill="url(#${g('gilt')})" stroke="#5e3b12" stroke-width="1"/>
+    <path d="M118 72 C104 56 98 38 106 20 C96 28 92 44 98 58 C88 52 84 40 86 28 C76 44 86 62 106 72 Z" fill="url(#${g('gilt')})" stroke="#5e3b12" stroke-width="1"/>
+    <path d="M122 70 C134 44 128 18 112 4 C130 8 142 28 138 50 C150 30 150 10 140 -6 C158 8 162 36 146 60 C140 68 130 72 122 74 Z" fill="url(#${g('gilt')})" stroke="#5e3b12" stroke-width="1" opacity=".95"/>
+    <!-- 날개 -->
+    <path d="M112 54 C96 42 80 40 66 46 C76 48 82 52 86 56 C76 56 68 60 62 68 C74 64 86 64 96 66 C88 70 84 74 82 80 C94 72 104 68 114 66 Z" fill="url(#${g('gilt')})" stroke="#5e3b12" stroke-width="1"/>
+    <path d="M128 54 C144 42 160 40 174 46 C164 48 158 52 154 56 C164 56 172 60 178 68 C166 64 154 64 144 66 C152 70 156 74 158 80 C146 72 136 68 126 66 Z" fill="url(#${g('gilt')})" stroke="#5e3b12" stroke-width="1"/>
+    <!-- 몸 · 목 · 머리 -->
+    <path d="M120 82 C108 80 106 64 112 54 C114 46 114 40 112 34 C110 28 114 22 120 22 C126 22 130 28 128 34 C126 40 126 46 128 54 C134 64 132 80 120 82 Z" fill="url(#${g('gilt')})" stroke="#5e3b12" stroke-width="1"/>
+    <path d="M120 22 C116 14 120 8 118 2 C124 6 126 14 122 22 Z" fill="#ffd77a" stroke="#5e3b12" stroke-width=".8"/>
+    <path d="M114 30 L106 33 L114 34 Z" fill="#c8913a" stroke="#5e3b12" stroke-width=".8"/>
+    <circle cx="117" cy="28" r="1.4" fill="#2a1a08"/>
+    <!-- 턱 아래 여의주 -->
+    <circle cx="117" cy="42" r="4.2" fill="url(#${g('pearl')})" stroke="#c8913a" stroke-width=".8"/>
+    <!-- 발과 받침 구슬 -->
+    <ellipse cx="120" cy="86" rx="9" ry="4" fill="url(#${g('gilt')})" stroke="#5e3b12" stroke-width="1"/>
+  </g>
+
+  <!-- 불씨 -->
+  ${smoke ? `<g>${embers}</g>` : ''}
+</svg>`;
+}
+
 function CenserIllustration({ className = '', smoke = true }) {
   const uid = useMemo(() => `c${Math.random().toString(36).slice(2, 8)}`, []);
-  return (
-    <svg viewBox="0 0 120 200" className={className} role="img" aria-label="백제금동대향로">
-      <defs>
-        <linearGradient id={`${uid}-gilt`} x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#fff0bd" />
-          <stop offset="0.45" stopColor="#e2b85c" />
-          <stop offset="1" stopColor="#8a5f25" />
-        </linearGradient>
-        <radialGradient id={`${uid}-pearl`} cx="0.35" cy="0.35" r="0.7">
-          <stop offset="0" stopColor="#ffffff" />
-          <stop offset="1" stopColor="#f0c86a" />
-        </radialGradient>
-      </defs>
-
-      {/* 향 연기 */}
-      {smoke && (
-        <g fill="none" stroke="#f6ecd2" strokeWidth="1.4" strokeLinecap="round">
-          <path className="smoke" d="M38 52 C34 46 42 42 38 36" style={{ animationDelay: '0s' }} />
-          <path className="smoke" d="M82 52 C86 46 78 42 82 36" style={{ animationDelay: '1.2s' }} />
-          <path className="smoke" d="M48 44 C45 39 51 35 48 30" style={{ animationDelay: '2.3s' }} />
-        </g>
-      )}
-
-      <g fill={`url(#${uid}-gilt)`}>
-        {/* 봉황 */}
-        <path d="M60 15 C56 11 56 5 60 2 C64 5 64 11 60 15Z" />
-        <ellipse cx="60" cy="25" rx="6.5" ry="9.5" />
-        <path d="M54 22 C44 12 34 12 27 19 C36 19 44 24 52 31Z" />
-        <path d="M66 22 C76 12 86 12 93 19 C84 19 76 24 68 31Z" />
-        <path d="M56 33 C50 40 44 42 40 41 C46 45 56 41 60 35Z" />
-        {/* 뚜껑: 겹겹의 산 */}
-        <path d="M24 92 C24 66 40 44 60 39 C80 44 96 66 96 92 Z" />
-        {/* 받침 띠 */}
-        <rect x="21" y="91" width="78" height="6" rx="3" />
-        {/* 몸체: 연꽃 */}
-        <path d="M26 97 C28 119 44 129 60 129 C76 129 92 119 94 97 Z" />
-        {/* 용 받침 */}
-        <path d="M60 129 C53 140 70 146 62 158 C56 166 66 171 60 177" fill="none" stroke={`url(#${uid}-gilt)`} strokeWidth="7" strokeLinecap="round" />
-        <ellipse cx="60" cy="183" rx="31" ry="9" />
-      </g>
-
-      {/* 여의주 */}
-      <circle cx="60" cy="35" r="3.4" fill={`url(#${uid}-pearl)`} />
-
-      {/* 산봉우리 · 연잎 · 용 비늘 결 */}
-      <g fill="none" stroke="#6e4a1c" strokeWidth="1.4" strokeLinecap="round" opacity="0.85">
-        <path d="M30 86 q5 -10 10 0 q5 -10 10 0 q5 -10 10 0 q5 -10 10 0 q5 -10 10 0 q5 -10 10 0" />
-        <path d="M36 72 q4 -9 8 0 q4 -9 8 0 q4 -9 8 0 q4 -9 8 0 q4 -9 8 0 q4 -9 8 0" />
-        <path d="M44 58 q4 -8 8 0 q4 -8 8 0 q4 -8 8 0 q4 -8 8 0" />
-        <path d="M60 128 C54 117 54 105 60 98 C66 105 66 117 60 128Z" />
-        <path d="M46 125 C38 115 36 105 38 98 C46 104 50 113 46 125Z" />
-        <path d="M74 125 C82 115 84 105 82 98 C74 104 70 113 74 125Z" />
-        <path d="M33 117 C29 110 28 103 29 98 C34 103 36 109 33 117Z" />
-        <path d="M87 117 C91 110 92 103 91 98 C86 103 84 109 87 117Z" />
-        <path d="M34 181 q8 -9 16 0 q8 -9 16 0 q8 -9 16 0" />
-      </g>
-      <ellipse cx="60" cy="188" rx="36" ry="5" fill="#000" opacity="0.35" />
-    </svg>
-  );
+  const markup = useMemo(() => censerMarkup(uid, smoke), [uid, smoke]);
+  return <div className={className} dangerouslySetInnerHTML={{ __html: markup }} />;
 }
 
 /* 수료증 도장 (SVG) */
@@ -1977,7 +2088,7 @@ function EndingScreen({ inventory, completedAt, mistakeCount, hintCount, onOpenN
         <div className="spin-rev absolute inset-[11%] rounded-full border border-dashed border-[#e2b85c]/35" />
         <div className="absolute inset-[3%] rounded-full border border-[#e2b85c]/10" />
 
-        <div className="absolute left-1/2 top-1/2 h-[46%] w-[28%] -translate-x-1/2 -translate-y-1/2 drop-shadow-[0_0_28px_rgba(246,220,148,0.55)]">
+        <div className="absolute left-1/2 top-[40%] h-[66%] w-[31%] -translate-x-1/2 -translate-y-1/2 drop-shadow-[0_0_28px_rgba(246,220,148,0.55)]">
           <CenserIllustration className="h-full w-full" />
         </div>
 
