@@ -98,11 +98,12 @@ const TEST_ENABLED = (() => {
 })();
 
 // 말할 때 움직이는 입 위치: 초상화 이미지(3:4) 기준 %. x·y = 입 중심, w = 입 너비
+// jaw 가 있으면 입을 덧그리지 않고 아랫입술·턱을 살짝 내려 입이 벌어지게 함 (원래 입이 크게 그려진 인물용)
 const MOUTH = {
-  'curator.png': { x: 48.5, y: 60.5, w: 6.5 },
+  'curator.png': { x: 49.3, y: 59.8, w: 9, jaw: { w: 22, h: 7.5, drop: 1.4 } },
   'monk.png': { x: 50, y: 65.5, w: 8 },
   'gatekeeper.png': { x: 49.5, y: 57.5, w: 6 },
-  'boatman.png': { x: 49.5, y: 61.5, w: 9 },
+  'boatman.png': { x: 49.5, y: 62.3, w: 17, jaw: { w: 36, h: 11, drop: 1.3 } },
   'court_lady.png': { x: 68, y: 67, w: 7 },
   'tomb_keeper.png': { x: 51.5, y: 54, w: 8 },
   'docent.png': { x: 50.5, y: 53.5, w: 6 },
@@ -185,6 +186,31 @@ const Sound = (() => {
     },
     blip(pitch = 1) {
       tone(480 * pitch + Math.random() * 40, 0, 0.045, { type: 'square', gain: 0.018 });
+    },
+    // 금동이 변신: 2.7초 동안 차오르다가 번쩍
+    awaken() {
+      const c = ac();
+      if (!c) return;
+      const t = c.currentTime;
+      const o = c.createOscillator();
+      const g = c.createGain();
+      const f = c.createBiquadFilter();
+      o.type = 'sawtooth';
+      o.frequency.setValueAtTime(110, t);
+      o.frequency.exponentialRampToValueAtTime(880, t + 2.7);
+      f.type = 'lowpass';
+      f.frequency.setValueAtTime(600, t);
+      f.frequency.exponentialRampToValueAtTime(4000, t + 2.7);
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.05, t + 2.4);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 2.8);
+      o.connect(f);
+      f.connect(g);
+      g.connect(c.destination);
+      o.start(t);
+      o.stop(t + 2.9);
+      [523.25, 659.25, 783.99, 1046.5, 1318.5, 1568].forEach((fr, i) => tone(fr, 2.75 + i * 0.05, 2.2, { type: 'triangle', gain: 0.1 }));
+      [2093, 2637, 3136, 4186].forEach((fr, i) => tone(fr, 2.9 + i * 0.09, 1.2, { gain: 0.04 }));
     },
     finale() {
       [261.63, 329.63, 392, 523.25, 659.25, 783.99, 1046.5].forEach((f, i) => tone(f, i * 0.11, 1.4, { type: 'triangle', gain: 0.12 }));
@@ -935,6 +961,7 @@ export default function BuyeoTimeDetective() {
   const [attemptsByStage, setAttemptsByStage] = useState(saved.attemptsByStage); // 장소별 오답 횟수 (2번 틀리면 두 번째 힌트)
   const [isNotebookOpen, setNotebookOpen] = useState(false);
   const [rewardPopupId, setRewardPopupId] = useState(null); // 획득 팝업에 띄울 장소 id
+  const [awakening, setAwakening] = useState(false); // 엔딩: 금동이 변신 전체 화면 연출
 
   // ---- 연출 · 기록 상태 ----
   const [celebrateKey, setCelebrateKey] = useState(0); // 값이 바뀔 때마다 축하 이펙트 재생
@@ -1024,11 +1051,6 @@ export default function BuyeoTimeDetective() {
     setFeedback(null);
   };
 
-  // 문제가 나오면 카드 맨 위로 스크롤 (스크롤 없이 한 화면에 보이도록)
-  useEffect(() => {
-    if (showQuiz && mainRef.current) mainRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }, [showQuiz, stage.id]);
-
   useEffect(() => {
     if (!celebrateKey) return undefined;
     setCelebrating(true);
@@ -1107,9 +1129,13 @@ export default function BuyeoTimeDetective() {
     setNotebookOpen(false);
     setRewardPopupId(null);
     setGameStatus('ending');
+    setAwakening(true); // 화면 가운데에서 금동이 변신 장면부터
+    window.scrollTo({ top: 0 });
+  };
+  const finishAwakening = () => {
+    setAwakening(false);
     setCelebrateKey((k) => k + 1);
     if (sfxOn) Sound.finale();
-    window.scrollTo({ top: 0 });
   };
 
   const handleSubmit = (e) => {
@@ -1264,8 +1290,10 @@ export default function BuyeoTimeDetective() {
           hintCount={hintStages.length}
           onOpenNotebook={() => setNotebookOpen(true)}
           onRestart={restartGame}
+          onReplayAwakening={() => setAwakening(true)}
         />
         {overlays}
+        {awakening && <AwakeningOverlay sfxOn={sfxOn} onDone={finishAwakening} />}
       </Shell>
     );
   }
@@ -1391,7 +1419,7 @@ export default function BuyeoTimeDetective() {
         </div>
       </header>
 
-      <div className="mx-auto grid max-w-6xl grid-cols-1 gap-4 px-4 py-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+      <div className="mx-auto grid max-w-6xl gap-5 px-4 py-5 md:grid-cols-[minmax(0,1fr)_260px] lg:grid-cols-[minmax(0,1fr)_340px]">
         {/* ---------- 메인 카드 ---------- */}
         <main ref={mainRef} className="min-w-0 scroll-mt-28 overflow-hidden rounded-3xl border border-[#3a2f20] bg-[#1a1612] shadow-2xl shadow-black/40">
           {/* 장소 사진 배너 */}
@@ -1401,12 +1429,12 @@ export default function BuyeoTimeDetective() {
               src={stage.image}
               alt={`${stage.name} 풍경`}
               stageId={stage.id}
-              className={`w-full transition-[height] duration-300 ${showQuiz ? 'h-14 sm:h-16' : 'h-36 sm:h-44 lg:h-48'}`}
-              iconClassName={showQuiz ? 'h-10 w-10' : 'h-28 w-28 sm:h-36 sm:w-36'}
+              className="aspect-[16/9] w-full sm:aspect-[21/9]"
+              iconClassName="h-36 w-36 sm:h-52 sm:w-52"
               showPathHint={testMode}
             />
             <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#1a1612] via-[#1a1612]/40 to-black/25" />
-            <div className={`font-body absolute inset-x-0 top-0 flex-wrap items-center gap-2 p-3 text-xs sm:p-4 ${showQuiz ? 'hidden' : 'flex'}`}>
+            <div className="font-body absolute inset-x-0 top-0 flex flex-wrap items-center gap-2 p-4 text-xs sm:p-5">
               <span className="inline-flex items-center gap-1 rounded-full border border-white/15 bg-black/45 px-2.5 py-1 text-[#f0e6cc] backdrop-blur-sm">
                 <MapPin className="h-3.5 w-3.5" style={{ color: theme.accent }} />
                 탐방 거점 {stage.order} / {TOTAL}
@@ -1417,31 +1445,26 @@ export default function BuyeoTimeDetective() {
                 </span>
               )}
             </div>
-            <div className={`absolute inset-x-0 bottom-0 flex items-end gap-3 sm:gap-4 ${showQuiz ? 'px-4 py-2.5 sm:px-5' : 'p-4 sm:p-5'}`}>
+            <div className="absolute inset-x-0 bottom-0 flex items-end gap-3 p-4 sm:gap-4 sm:p-6">
               <div
-                className={`h-12 w-12 shrink-0 items-center justify-center rounded-2xl border bg-black/45 backdrop-blur-sm ${showQuiz ? 'hidden' : 'hidden sm:flex'}`}
+                className="hidden h-14 w-14 shrink-0 items-center justify-center rounded-2xl border bg-black/45 backdrop-blur-sm sm:flex"
                 style={{ borderColor: `${theme.accent}66` }}
               >
                 <StageIcon className="h-7 w-7" style={{ color: theme.accent }} strokeWidth={1.6} />
               </div>
               <div className="min-w-0">
-                {!showQuiz && (
-                  <span className="font-body inline-block rounded-full border border-white/15 bg-black/45 px-2.5 py-0.5 text-[11px] text-[#e4d6b4] backdrop-blur-sm sm:text-xs">
-                    {stage.era}
-                  </span>
-                )}
-                <h2
-                  className={`font-display leading-tight text-[#fbf3de] drop-shadow-[0_2px_10px_rgba(0,0,0,0.8)] ${showQuiz ? 'text-xl sm:text-2xl' : 'mt-1.5 text-2xl sm:text-3xl'}`}
-                >
+                <span className="font-body inline-block rounded-full border border-white/15 bg-black/45 px-2.5 py-0.5 text-[11px] text-[#e4d6b4] backdrop-blur-sm sm:text-xs">
+                  {stage.era}
+                </span>
+                <h2 className="font-display mt-1.5 text-2xl leading-tight text-[#fbf3de] drop-shadow-[0_2px_10px_rgba(0,0,0,0.8)] sm:text-4xl">
                   {stage.name}
                 </h2>
               </div>
             </div>
           </section>
 
-          <div className={`flex flex-col ${showQuiz ? 'gap-3 p-4 sm:p-5' : 'gap-4 p-4 sm:p-6'}`}>
-            {/* 문제 풀 때는 설명·대화를 접어서 한 화면에 문제만 */}
-            {!showQuiz && <p className="font-body max-w-prose text-[14px] leading-6 text-[#cdbf9f]">{stage.description}</p>}
+          <div className="flex flex-col gap-5 p-5 sm:p-7">
+            <p className="font-body max-w-prose text-[14px] leading-6 text-[#cdbf9f]">{stage.description}</p>
 
             {/* 준비 중인 스테이지 */}
             {!isPlayable && (
@@ -1457,12 +1480,14 @@ export default function BuyeoTimeDetective() {
             )}
 
             {/* NPC 대화창 */}
-            {isPlayable && activeDialogue && !showQuiz && (
+            {isPlayable && activeDialogue && (
               <DialogueBox
                 key={stage.id}
                 speaker={activeDialogue.speaker}
                 text={activeDialogue.text}
                 narration={activeDialogue.speaker === NARRATOR}
+                sceneAvatar={stage.dialogues.find((d) => d.speaker !== NARRATOR && !d.speaker.startsWith('수사관'))?.avatar || null}
+                sceneName={stage.npc?.name || ''}
                 voiceOn={voiceOn}
                 sfxOn={sfxOn}
                 voiceProfile={
@@ -1513,16 +1538,27 @@ export default function BuyeoTimeDetective() {
                 attempts={attempts}
                 shakeKey={shakeKey}
                 revealAnswer={testMode && revealAnswer}
-                skipLabel={nextStage ? `${nextStage.name} 먼저 가기` : null}
-                onSkip={nextStage ? () => goToStage(nextStage) : null}
               />
+            )}
+
+            {/* 막혔을 때: 다른 유적지 먼저 조사하기 */}
+            {showQuiz && nextStage && (
+              <div className="font-body flex flex-col gap-2 rounded-2xl border border-[#3a2f20] bg-[#1d1813] px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-[#b8a888]">막혔나요? 순서와 상관없이 다른 유적지부터 조사해도 돼요.</p>
+                <button
+                  onClick={() => goToStage(nextStage)}
+                  className="inline-flex shrink-0 items-center justify-center gap-1 rounded-full border border-[#6b5636] px-4 py-2 text-[#e8dcc0] transition hover:border-[#e2b85c] hover:text-[#f6ecd2] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#e2b85c]/60"
+                >
+                  {nextStage.name} 먼저 가기 <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
             )}
 
             {/* 피드백 */}
             {feedback && (
               <div
                 role="status"
-                className={`font-body anim-pop flex items-start gap-3 rounded-2xl border text-sm leading-6 ${showQuiz ? 'px-4 py-2.5' : 'p-4'} ${feedback.type === 'success'
+                className={`font-body anim-pop flex items-start gap-3 rounded-2xl border p-4 text-sm leading-6 ${feedback.type === 'success'
                   ? 'success-glow border-[#4f8a5b]/60 bg-[#1d2a1f] text-[#cfeccf]'
                   : 'border-[#9a4632]/60 bg-[#2d1915] text-[#f2c7b9]'
                   }`}
@@ -1533,16 +1569,8 @@ export default function BuyeoTimeDetective() {
                   <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-[#f08a6c]" />
                 )}
                 <div>
-                  {showQuiz ? (
-                    <p>
-                      <b>{feedback.type === 'success' ? '봉인 해제 성공' : '오답'}</b> · {feedback.message}
-                    </p>
-                  ) : (
-                    <>
-                      <p className="font-bold">{feedback.type === 'success' ? '봉인 해제 성공' : '오답'}</p>
-                      <p>{feedback.message}</p>
-                    </>
-                  )}
+                  <p className="font-bold">{feedback.type === 'success' ? '봉인 해제 성공' : '오답'}</p>
+                  <p>{feedback.message}</p>
                   {feedback.type === 'success' && (
                     <p className="mt-1 text-[#a8d6ae]">
                       획득: <b>{stage.rewardItem.name}</b> · 탐정 수첩에 기록되었습니다.
@@ -1585,7 +1613,7 @@ export default function BuyeoTimeDetective() {
         </main>
 
         {/* ---------- 지도 네비게이션 ---------- */}
-        <aside className="min-w-0 lg:sticky lg:top-24 lg:self-start">
+        <aside className="min-w-0 md:sticky md:top-24 md:self-start">
           <div className="rounded-3xl border border-[#3a2f20] bg-[#1a1612] p-4">
             <div className="mb-3 flex items-center justify-between px-1">
               <h3 className="font-display flex items-center gap-2 text-lg text-[#f3e7c9]">
@@ -1743,7 +1771,27 @@ function Shell({ children }) {
           opacity: min(1, calc(var(--open, 0) * 6));
         }
         /* 음성 없이 글자만 나올 때: 느긋하고 불규칙한 기본 움직임 */
-        .talk-mouth.is-flapping { opacity: 1; animation: mouthFlap 1.5s linear infinite; }
+        .is-flapping .talk-mouth { opacity: 1; animation: mouthFlap 1.5s linear infinite; }
+        /* 턱을 내리는 방식 (학예연구사·뱃사공) */
+        .talk-inner {
+          position: absolute; transform: translateX(-50%);
+          border-radius: 0 0 50% 50% / 0 0 100% 100%;
+          background: radial-gradient(ellipse at 50% 0%, #2b0b08 0 45%, #5a1a14 75%, #8a3a2c 100%);
+        }
+        .talk-jaw {
+          position: absolute; inset: 0; width: 100%; height: 100%; object-fit: fill;
+          transform: translateY(calc(var(--open, 0) * var(--drop)));
+        }
+        .is-flapping .talk-jaw { animation: jawFlap 1.5s linear infinite; }
+        @keyframes jawFlap {
+          0%, 50%, 100% { transform: translateY(calc(.08 * var(--drop))); }
+          12% { transform: translateY(calc(.6 * var(--drop))); }
+          24% { transform: translateY(calc(.18 * var(--drop))); }
+          38% { transform: translateY(calc(.45 * var(--drop))); }
+          63% { transform: translateY(calc(.65 * var(--drop))); }
+          76% { transform: translateY(calc(.22 * var(--drop))); }
+          88% { transform: translateY(calc(.5 * var(--drop))); }
+        }
         @keyframes mouthFlap {
           0%   { transform: translate(-50%, -35%) scaleY(.08); }
           12%  { transform: translate(-50%, -35%) scaleY(.55); }
@@ -1777,6 +1825,42 @@ function Shell({ children }) {
         .aura-glow { animation: auraGlow 2.6s ease-in-out infinite; }
         @keyframes morphText { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
         .morph-text { animation: morphText .6s 2.6s ease-out both; }
+
+        /* 엔딩 금동이 변신 전체 화면 (움직임 줄이기 설정과 상관없이 재생) */
+        .aw-backdrop { background: radial-gradient(circle at 50% 45%, #3a280e, #080604 70%); }
+        @keyframes awFade { from { opacity: 0; } to { opacity: 1; } }
+        .aw-rays { transform: translate(-50%, -50%); animation: awSpin 14s linear infinite, awRaysIn 1s ease-out both; }
+        .aw-rays.is-charging { animation: awSpin 3s linear infinite, awRaysIn 2.9s ease-in both; }
+        @keyframes awSpin { from { transform: translate(-50%, -50%) rotate(0deg); } to { transform: translate(-50%, -50%) rotate(360deg); } }
+        @keyframes awRaysIn { from { opacity: 0; } to { opacity: .9; } }
+        .aw-ring { width: 30vmin; height: 30vmin; margin: -15vmin 0 0 -15vmin; opacity: 0; box-shadow: 0 0 24px rgba(255,217,138,.6); animation: awRing 1.4s ease-in infinite; }
+        @keyframes awRing { 0% { transform: scale(2.6); opacity: 0; } 30% { opacity: .9; } 100% { transform: scale(.3); opacity: 0; } }
+        .aw-mote { opacity: 0; box-shadow: 0 0 10px 3px rgba(255,220,140,.8); animation: awMote 1.6s ease-in infinite; }
+        @keyframes awMote { 0% { transform: translate(var(--sx), var(--sy)); opacity: 0; } 20% { opacity: 1; } 100% { transform: translate(-50%, -50%) scale(.3); opacity: 0; } }
+        .aw-halo { animation: awHalo 2.9s ease-in both; }
+        @keyframes awHalo { 0% { opacity: .2; transform: scale(.7); } 100% { opacity: 1; transform: scale(1.15); } }
+        .aw-card-charge { animation: awCardIn .7s cubic-bezier(.2,.9,.3,1.2) both, awShake 2.2s .7s ease-in both; }
+        @keyframes awCardIn { from { opacity: 0; transform: scale(.6) translateY(30px); } to { opacity: 1; transform: none; } }
+        @keyframes awShake {
+          0%, 30% { transform: none; }
+          40% { transform: translateX(-2px) rotate(-.5deg); } 50% { transform: translateX(3px) rotate(.6deg); }
+          60% { transform: translateX(-4px) rotate(-.8deg); } 70% { transform: translateX(5px) rotate(1deg); }
+          80% { transform: translateX(-6px) rotate(-1.2deg) scale(1.03); } 90% { transform: translateX(6px) rotate(1.2deg) scale(1.06); }
+          100% { transform: scale(1.1); }
+        }
+        .aw-beast { animation: awBeast 2.9s ease-in both; }
+        @keyframes awBeast { 0%, 35% { filter: brightness(1); } 100% { filter: brightness(3.2) saturate(.4); } }
+        .aw-flash { opacity: 0; animation: awFlash 1.3s 2.7s ease-out both; }
+        @keyframes awFlash { 0% { opacity: 0; } 18% { opacity: 1; } 100% { opacity: 0; } }
+        .aw-card-reveal { animation: awAura 2.6s ease-in-out infinite; }
+        @keyframes awAura { 0%, 100% { box-shadow: 0 0 30px 6px rgba(246,220,148,.5); } 50% { box-shadow: 0 0 70px 18px rgba(246,220,148,.9); } }
+        .aw-human { animation: awHuman 1.1s cubic-bezier(.2,.8,.3,1.1) both; }
+        @keyframes awHuman { 0% { opacity: 0; transform: scale(1.18); filter: brightness(3); } 100% { opacity: 1; transform: none; filter: none; } }
+        .aw-spark { opacity: 0; box-shadow: 0 0 12px 4px rgba(255,214,120,.85); animation: awSpark 1.3s ease-out both; }
+        @keyframes awSpark { 0% { transform: translate(-50%, -50%) scale(1.4); opacity: 1; } 100% { transform: translate(var(--ex), var(--ey)) scale(.2); opacity: 0; } }
+        .aw-title { animation: awTitle .8s .5s ease-out both; }
+        @keyframes awTitle { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+        .aw-continue { animation: awFade .6s ease-out both; }
 
         @media (prefers-reduced-motion: reduce) {
           .morph-beast { display: none !important; }
@@ -2042,7 +2126,7 @@ function SealStamp({ className = '' }) {
 }
 
 /* 엔딩: 향로 복원 + 유물 원형 배치 + 수료증 */
-function EndingScreen({ inventory, completedAt, mistakeCount, hintCount, onOpenNotebook, onRestart }) {
+function EndingScreen({ inventory, completedAt, mistakeCount, hintCount, onOpenNotebook, onRestart, onReplayAwakening }) {
   const dateText = formatDate(completedAt || new Date());
   const relics = STAGES.map((s, i) => {
     const angle = -90 + (360 / STAGES.length) * i;
@@ -2064,7 +2148,7 @@ function EndingScreen({ inventory, completedAt, mistakeCount, hintCount, onOpenN
 
       {/* 금동이 각성(변신) 연출 */}
       <div className="mt-10 w-full">
-        <AwakeningCard />
+        <AwakeningCard onReplay={onReplayAwakening} />
       </div>
 
       {/* 향로 + 후광 + 유물 원형 배치 */}
@@ -2336,7 +2420,7 @@ function CharacterPortrait({ src, name, variant = 'npc', accent, className = '',
   const mouthRef = useRef(null);
 
   useEffect(() => {
-    const el = mouthRef.current;
+    const el = mouthRef.current; // 이미지와 같은 3:4 상자 (자식들이 --open 값을 물려받음)
     if (!talking || !el) return undefined;
     let raf = 0;
     let open = 0;
@@ -2376,12 +2460,31 @@ function CharacterPortrait({ src, name, variant = 'npc', accent, className = '',
           {/* 말하는 입: 이미지(3:4)와 같은 비율의 상자를 위쪽 기준으로 겹쳐 입 위치를 맞춤 */}
           {mouth && (
             <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-[14px]" aria-hidden="true">
-              <div className="absolute left-1/2 top-0 h-full -translate-x-1/2" style={{ aspectRatio: '3 / 4' }}>
-                <span
-                  ref={mouthRef}
-                  className="talk-mouth"
-                  style={{ left: `${mouth.x}%`, top: `${mouth.y}%`, width: `${mouth.w}%` }}
-                />
+              <div ref={mouthRef} className="absolute left-1/2 top-0 h-full -translate-x-1/2" style={{ aspectRatio: '3 / 4' }}>
+                {mouth.jaw ? (
+                  <>
+                    {/* 벌어진 입 안쪽 (턱이 내려가야 보임) */}
+                    <span
+                      className="talk-inner"
+                      style={{ left: `${mouth.x}%`, top: `${mouth.y}%`, width: `${mouth.w}%`, height: `${mouth.jaw.drop * 1.7}%` }}
+                    />
+                    {/* 아랫입술~턱: 같은 그림을 겹쳐 그 부분만 아래로 살짝 이동 */}
+                    <img
+                      src={src}
+                      alt=""
+                      draggable="false"
+                      className="talk-jaw"
+                      style={{
+                        '--drop': `${mouth.jaw.drop}%`,
+                        clipPath: `inset(${mouth.y}% 0 0 0)`,
+                        WebkitMaskImage: `radial-gradient(ellipse ${mouth.jaw.w / 2}% ${mouth.jaw.h}% at ${mouth.x}% ${mouth.y}%, #000 62%, transparent 100%)`,
+                        maskImage: `radial-gradient(ellipse ${mouth.jaw.w / 2}% ${mouth.jaw.h}% at ${mouth.x}% ${mouth.y}%, #000 62%, transparent 100%)`,
+                      }}
+                    />
+                  </>
+                ) : (
+                  <span className="talk-mouth" style={{ left: `${mouth.x}%`, top: `${mouth.y}%`, width: `${mouth.w}%` }} />
+                )}
               </div>
             </div>
           )}
@@ -2520,7 +2623,7 @@ function HeroAvatar({ mode, crop = false, className = '' }) {
 }
 
 /* 엔딩: 정령 → 인간 각성 변신 카드 */
-function AwakeningCard() {
+function AwakeningCard({ onReplay }) {
   const [run, setRun] = useState(0);
   return (
     <section className="w-full max-w-2xl" aria-label="금동이 각성">
@@ -2559,7 +2662,7 @@ function AwakeningCard() {
             일곱 봉인의 기운이 하나로 모여 금동이가 본래의 늠름한 인간 수사관 모습으로 각성했습니다!
           </p>
           <button
-            onClick={() => setRun((r) => r + 1)}
+            onClick={() => (onReplay ? onReplay() : setRun((r) => r + 1))}
             className="font-body mt-4 inline-flex items-center gap-1.5 rounded-full border border-[#e2b85c]/50 px-4 py-2 text-sm text-[#e2b85c] transition hover:bg-[#e2b85c]/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#e2b85c]/60"
           >
             <RotateCcw className="h-4 w-4" /> 변신 다시 보기
@@ -2567,6 +2670,136 @@ function AwakeningCard() {
         </div>
       </div>
     </section>
+  );
+}
+
+/* 엔딩: 금동이 변신 전체 화면 연출 (약 6초)
+ * 정령 등장 → 기운이 모이며 빛 고리·빛살·빛 알갱이가 빨려 듦 → 번쩍 → 인간 수사관으로 각성, 불꽃이 터짐 → 제목 */
+function AwakeningOverlay({ sfxOn, onDone }) {
+  const [phase, setPhase] = useState('charge'); // charge → reveal → done(계속하기 버튼)
+  useEffect(() => {
+    if (sfxOn) Sound.awaken();
+    const t1 = setTimeout(() => setPhase('reveal'), 2900);
+    const t2 = setTimeout(() => setPhase('done'), 4600);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
+  }, [sfxOn]);
+
+  // 모여드는 빛 알갱이 · 터지는 불꽃 (위치 고정)
+  const motes = useMemo(
+    () =>
+      Array.from({ length: 28 }, (_, i) => {
+        const a = (i / 28) * Math.PI * 2 + (i % 3) * 0.4;
+        const r = 46 + (i % 5) * 6;
+        return { x: Math.cos(a) * r, y: Math.sin(a) * r, d: (0.5 + (i % 7) * 0.3).toFixed(2), s: 4 + (i % 4) * 2 };
+      }),
+    [],
+  );
+  const sparks = useMemo(
+    () =>
+      Array.from({ length: 36 }, (_, i) => {
+        const a = (i / 36) * Math.PI * 2;
+        const r = 30 + (i % 6) * 8;
+        return { x: Math.cos(a) * r, y: Math.sin(a) * r, d: ((i % 5) * 0.05).toFixed(2), s: 3 + (i % 3) * 3 };
+      }),
+    [],
+  );
+  const charging = phase === 'charge';
+
+  return (
+    <div className="aw-backdrop fixed inset-0 z-[70] flex items-center justify-center overflow-hidden" role="dialog" aria-modal="true" aria-label="금동이 각성">
+      {/* 빛살 */}
+      <div
+        className={`aw-rays pointer-events-none absolute left-1/2 top-1/2 h-[160vmax] w-[160vmax] ${charging ? 'is-charging' : ''}`}
+        style={{
+          background: 'repeating-conic-gradient(from 0deg, rgba(255,226,150,.28) 0deg 4deg, transparent 4deg 13deg)',
+          WebkitMaskImage: 'radial-gradient(circle, #000 8%, transparent 52%)',
+          maskImage: 'radial-gradient(circle, #000 8%, transparent 52%)',
+        }}
+      />
+      {/* 안쪽으로 모이는 빛 고리 */}
+      {charging &&
+        [0, 0.7, 1.4].map((d) => (
+          <span
+            key={d}
+            className="aw-ring pointer-events-none absolute left-1/2 top-1/2 rounded-full border-2 border-[#ffd98a]"
+            style={{ animationDelay: `${0.5 + d}s` }}
+          />
+        ))}
+      {/* 모여드는 빛 알갱이 */}
+      {charging &&
+        motes.map((m, i) => (
+          <span
+            key={i}
+            className="aw-mote pointer-events-none absolute left-1/2 top-1/2 rounded-full bg-[#fff1c4]"
+            style={{ width: m.s, height: m.s, '--sx': `${m.x}vmin`, '--sy': `${m.y}vmin`, animationDelay: `${m.d}s` }}
+          />
+        ))}
+
+      {/* 금동이 카드 */}
+      <div className="relative aspect-[3/4] h-[min(58vh,520px)]">
+        <div className="aw-halo pointer-events-none absolute -inset-[30%] rounded-full bg-[radial-gradient(circle,rgba(255,224,150,0.65),rgba(226,184,92,0.2)_40%,transparent_68%)]" />
+        <div
+          className={`relative h-full w-full rounded-[28px] bg-gradient-to-br from-[#fff0bd] via-[#b6852f] to-[#f6dc94] p-[3px] ${charging ? 'aw-card-charge' : 'aw-card-reveal'}`}
+        >
+          <div className="relative h-full w-full overflow-hidden rounded-[25px] bg-[#120f0c]">
+            {charging ? (
+              <div className="aw-beast absolute inset-0">
+                <HeroAvatar mode="beast" className="h-full w-full" />
+              </div>
+            ) : (
+              <div className="aw-human absolute inset-0">
+                <HeroAvatar mode="human" className="h-full w-full" />
+              </div>
+            )}
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/4 bg-gradient-to-t from-black/60 to-transparent" />
+          </div>
+        </div>
+        {/* 터지는 불꽃 */}
+        {!charging &&
+          sparks.map((p, i) => (
+            <span
+              key={i}
+              className="aw-spark pointer-events-none absolute left-1/2 top-1/2 rounded-full bg-[#ffe7a3]"
+              style={{ width: p.s, height: p.s, '--ex': `${p.x}vmin`, '--ey': `${p.y}vmin`, animationDelay: `${p.d}s` }}
+            />
+          ))}
+      </div>
+
+      {/* 번쩍 */}
+      <div className="aw-flash pointer-events-none absolute inset-0 bg-[radial-gradient(circle,#ffffff_0%,#fff5d6_35%,rgba(255,230,160,0.6)_65%,rgba(255,220,140,0)_100%)]" />
+
+      {/* 제목 */}
+      {!charging && (
+        <div className="aw-title pointer-events-none absolute inset-x-0 top-[4vh] px-4 text-center">
+          <p className="font-body text-xs tracking-[0.35em] text-[#f6dc94]">AWAKENING</p>
+          <h2 className="font-display title-shine mt-2 text-3xl leading-tight sm:text-5xl">금동이, 본래 모습을 되찾다</h2>
+        </div>
+      )}
+      {!charging && (
+        <p className="aw-title font-body pointer-events-none absolute inset-x-0 bottom-[12vh] px-4 text-center text-sm text-[#ece0c4] sm:text-base">
+          일곱 봉인의 기운이 모여 늠름한 인간 수사관으로 각성했습니다!
+        </p>
+      )}
+
+      {phase === 'done' ? (
+        <button
+          onClick={onDone}
+          className="aw-continue font-body absolute bottom-[3vh] left-1/2 inline-flex -translate-x-1/2 items-center gap-2 rounded-full bg-[#e2b85c] px-7 py-3 text-base font-bold text-[#1a140c] shadow-[0_0_30px_rgba(246,220,148,0.6)] transition hover:bg-[#f0cb75] focus:outline-none focus-visible:ring-4 focus-visible:ring-[#e2b85c]/40"
+        >
+          계속하기 <ChevronRight className="h-5 w-5" />
+        </button>
+      ) : (
+        <button
+          onClick={onDone}
+          className="font-body absolute right-4 top-4 rounded-full border border-white/20 px-3 py-1.5 text-xs text-white/70 transition hover:bg-white/10"
+        >
+          건너뛰기
+        </button>
+      )}
+    </div>
   );
 }
 
@@ -2649,6 +2882,8 @@ function DialogueBox({
   voiceOn = false,
   sfxOn = false,
   voiceProfile,
+  sceneAvatar = null,
+  sceneName = '',
 }) {
   const variant = isPlayer ? heroMode : 'npc';
   const displayName = isPlayer ? HERO_NAME : speaker;
@@ -2705,13 +2940,26 @@ function DialogueBox({
     </div>
   );
 
-  // 나레이션: 초상화 없이 장면을 설명하는 해설 상자
+  // 나레이션: 장면 해설 상자 (이 장소 인물의 초상화를 곁에 조용히 보여 줌)
   if (narration) {
     return (
-      <section className="anim-fade-up relative" aria-label="나레이션">
+      <section className={`anim-fade-up relative ${sceneAvatar ? 'pt-20 sm:pt-16' : ''}`} aria-label="나레이션">
+        {sceneAvatar && (
+          <CharacterPortrait
+            key={`scene-${sceneName}`}
+            src={sceneAvatar}
+            name={sceneName}
+            variant="npc"
+            accent={accent}
+            className="absolute left-3 top-0 z-10 h-32 w-24 sm:bottom-0 sm:left-4 sm:top-auto sm:h-60 sm:w-40"
+          />
+        )}
         <div
           onClick={!done ? skip : undefined}
-          className="relative rounded-2xl border border-dashed border-[#6b5636] bg-[#120f0c]/80 px-5 pb-4 pt-5 sm:px-8"
+          className={`relative rounded-2xl border border-dashed border-[#6b5636] bg-[#120f0c]/80 pb-4 ${sceneAvatar
+            ? 'min-h-[176px] px-4 pt-14 sm:min-h-[200px] sm:pl-[188px] sm:pr-6 sm:pt-6'
+            : 'px-5 pt-5 sm:px-8'
+            }`}
         >
           <div className="font-body flex items-center justify-between gap-2 text-xs">
             <span className="inline-flex items-center gap-1.5 tracking-[0.2em] text-[#c9a96b]">
@@ -2719,7 +2967,7 @@ function DialogueBox({
             </span>
             <span className="shrink-0 tabular-nums text-[#7d6f57]">{progress}</span>
           </div>
-          <p className="font-display relative mt-3 text-center text-[16px] leading-8 text-[#e8dcc0] sm:text-lg sm:leading-9">
+          <p className={`font-display relative mt-3 text-[16px] leading-8 text-[#e8dcc0] sm:text-lg sm:leading-9 ${sceneAvatar ? '' : 'text-center'}`}>
             <span className="invisible" aria-hidden="true">
               {text}
             </span>
@@ -2853,8 +3101,6 @@ function QuizPanel({
   attempts,
   shakeKey,
   revealAnswer,
-  skipLabel = null,
-  onSkip = null,
 }) {
   const shakeRef = useRef(null);
   const inputRef = useRef(null);
@@ -2952,27 +3198,14 @@ function QuizPanel({
           )}
         </div>
         <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex flex-wrap items-center justify-center gap-1 sm:justify-start">
-            <button
-              type="button"
-              onClick={toggleHint}
-              aria-expanded={showHint}
-              className="font-body inline-flex items-center justify-center gap-1.5 rounded-full px-3 py-2 text-sm text-[#c9a96b] transition hover:bg-white/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#e2b85c]/50"
-            >
-              <Lightbulb className="h-4 w-4" /> {showHint ? '힌트 숨기기' : '힌트 보기'}
-            </button>
-            {/* 막혔을 때: 순서와 상관없이 다른 유적지 먼저 */}
-            {onSkip && (
-              <button
-                type="button"
-                onClick={onSkip}
-                title="막혔다면 다른 유적지부터 조사해도 돼요"
-                className="font-body inline-flex items-center justify-center gap-1 rounded-full border border-[#4a3b26] px-3 py-1.5 text-sm text-[#b8a888] transition hover:border-[#e2b85c] hover:text-[#f6ecd2] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#e2b85c]/50"
-              >
-                막혔나요? {skipLabel} <ChevronRight className="h-4 w-4" />
-              </button>
-            )}
-          </div>
+          <button
+            type="button"
+            onClick={toggleHint}
+            aria-expanded={showHint}
+            className="font-body inline-flex items-center justify-center gap-1.5 rounded-full px-3 py-2 text-sm text-[#c9a96b] transition hover:bg-white/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#e2b85c]/50"
+          >
+            <Lightbulb className="h-4 w-4" /> {showHint ? '힌트 숨기기' : '힌트 보기'}
+          </button>
           <button
             type="submit"
             className="font-body inline-flex items-center justify-center gap-2 rounded-full bg-[#e2b85c] px-6 py-2.5 text-sm font-bold text-[#1a140c] transition hover:bg-[#f0cb75] focus:outline-none focus-visible:ring-4 focus-visible:ring-[#e2b85c]/40 active:scale-[0.98]"
