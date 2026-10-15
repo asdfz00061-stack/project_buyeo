@@ -1,0 +1,19 @@
+{
+  "name": "부여 시간 탐정: 사라진 향로의 봉인",
+  "short_name": "부여 시간 탐정",
+  "description": "일곱 유적지에 흩어진 백제금동대향로의 봉인을 되찾는 부여 역사 추리 게임",
+  "lang": "ko",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": ["fullscreen", "standalone"],
+  "orientation": "any",
+  "background_color": "#14110e",
+  "theme_color": "#14110e",
+  "categories": ["games", "education"],
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
