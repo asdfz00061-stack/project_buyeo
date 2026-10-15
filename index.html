@@ -152,15 +152,15 @@ const TEST_ENABLED = (() => {
 
 // 말할 때 움직이는 입 위치: 초상화 이미지(3:4) 기준 %. x·y = 입 중심, w = 입 너비
 const MOUTH = {
-  'curator.png': { x: 48.5, y: 60.5, w: 9 },
-  'monk.png': { x: 50, y: 65.5, w: 12 },
-  'gatekeeper.png': { x: 49.5, y: 57.5, w: 8 },
-  'boatman.png': { x: 49.5, y: 61, w: 14 },
+  'curator.png': { x: 48.5, y: 60.5, w: 6.5 },
+  'monk.png': { x: 50, y: 65.5, w: 8 },
+  'gatekeeper.png': { x: 49.5, y: 57.5, w: 6 },
+  'boatman.png': { x: 49.5, y: 61.5, w: 9 },
   'court_lady.png': { x: 68, y: 67, w: 7 },
-  'tomb_keeper.png': { x: 51.5, y: 53.5, w: 12 },
-  'docent.png': { x: 50.5, y: 53.5, w: 8 },
-  'geumdongi_beast.png': { x: 50, y: 71, w: 4 },
-  'geumdongi_human.png': { x: 51, y: 59, w: 12 },
+  'tomb_keeper.png': { x: 51.5, y: 54, w: 8 },
+  'docent.png': { x: 50.5, y: 53.5, w: 6 },
+  'geumdongi_beast.png': { x: 50, y: 71, w: 3.5 },
+  'geumdongi_human.png': { x: 51, y: 59, w: 9 },
 };
 const SECOND_HINT_AFTER = 2; // 이만큼 틀리면 두 번째 힌트(글자 수·첫 글자 / 오답 지우기)
 const mouthOf = (src) => (src ? MOUTH[String(src).split('/').pop()] || null : null);
@@ -224,6 +224,7 @@ const Sound = (() => {
   };
   return {
     unlock: () => ac(), // 첫 클릭 때 호출해 두면 모바일에서도 소리가 납니다
+    context: () => ac(),
     correct() {
       [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => {
         tone(f, i * 0.09, 0.55, { type: 'triangle', gain: 0.18 });
@@ -284,6 +285,30 @@ const VoicePlayer = (() => {
   // 오디오 요소 하나를 계속 재사용해야 모바일(iOS)에서 첫 터치 이후에도 자동 재생이 됩니다
   const audio = ok ? new window.Audio() : null;
   let token = 0;
+  // 말소리 크기 측정용: 오디오 → 분석기 → 스피커 (http/https 에서만, 파일로 열면 소리가 막힐 수 있어 건너뜀)
+  let analyser = null;
+  let buf = null;
+  const connect = () => {
+    if (analyser || !audio || !/^https?:$/.test(window.location.protocol)) return;
+    const c = Sound.context();
+    if (!c) return;
+    try {
+      const src = c.createMediaElementSource(audio);
+      analyser = c.createAnalyser();
+      analyser.fftSize = 1024;
+      buf = new Float32Array(analyser.fftSize);
+      src.connect(analyser);
+      analyser.connect(c.destination);
+    } catch {
+      analyser = null;
+    }
+  };
+  // 태블릿에서 앱을 내렸다 올리면 오디오가 잠들 수 있어, 화면을 누를 때마다 깨움
+  if (typeof document !== 'undefined') {
+    document.addEventListener('pointerdown', () => {
+      if (analyser) Sound.context();
+    }, { passive: true });
+  }
   // 0.05초 무음 WAV (첫 터치 때 재생해 오디오 잠금을 풉니다)
   const SILENT = (() => {
     const n = 400;
@@ -301,6 +326,7 @@ const VoicePlayer = (() => {
   return {
     unlock() {
       if (!audio) return;
+      connect();
       try {
         audio.src = SILENT;
         const p = audio.play();
@@ -326,6 +352,7 @@ const VoicePlayer = (() => {
         if (fallback) fallback();
       });
       audio.src = src;
+      if (analyser) Sound.context(); // 멈춰 있던 오디오 컨텍스트 깨우기
       const p = audio.play();
       if (p && p.catch) {
         p.catch(
@@ -336,6 +363,15 @@ const VoicePlayer = (() => {
           }),
         );
       }
+    },
+    // 지금 나오는 음성의 크기 0~1 (음성 파일이 재생 중이 아니면 null → 입은 기본 움직임)
+    level() {
+      if (!analyser || !audio || audio.paused || audio.ended) return null;
+      analyser.getFloatTimeDomainData(buf);
+      let sum = 0;
+      for (let i = 0; i < buf.length; i += 1) sum += buf[i] * buf[i];
+      const rms = Math.sqrt(sum / buf.length);
+      return Math.max(0, Math.min(1, (rms - 0.02) * 4));
     },
     stop() {
       token += 1;
@@ -1041,6 +1077,11 @@ function BuyeoTimeDetective() {
     setFeedback(null);
   };
 
+  // 문제가 나오면 카드 맨 위로 스크롤 (스크롤 없이 한 화면에 보이도록)
+  useEffect(() => {
+    if (showQuiz && mainRef.current) mainRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [showQuiz, stage.id]);
+
   useEffect(() => {
     if (!celebrateKey) return undefined;
     setCelebrating(true);
@@ -1403,7 +1444,7 @@ function BuyeoTimeDetective() {
         </div>
       </header>
 
-      <div className="mx-auto grid max-w-6xl grid-cols-1 gap-5 px-4 py-5 lg:grid-cols-[minmax(0,1fr)_340px]">
+      <div className="mx-auto grid max-w-6xl grid-cols-1 gap-4 px-4 py-4 lg:grid-cols-[minmax(0,1fr)_320px]">
         {/* ---------- 메인 카드 ---------- */}
         <main ref={mainRef} className="min-w-0 scroll-mt-28 overflow-hidden rounded-3xl border border-[#3a2f20] bg-[#1a1612] shadow-2xl shadow-black/40">
           {/* 장소 사진 배너 */}
@@ -1413,12 +1454,12 @@ function BuyeoTimeDetective() {
               src={stage.image}
               alt={`${stage.name} 풍경`}
               stageId={stage.id}
-              className="aspect-[16/9] w-full sm:aspect-[21/9]"
-              iconClassName="h-36 w-36 sm:h-52 sm:w-52"
+              className={`w-full transition-[height] duration-300 ${showQuiz ? 'h-14 sm:h-16' : 'h-36 sm:h-44 lg:h-48'}`}
+              iconClassName={showQuiz ? 'h-10 w-10' : 'h-28 w-28 sm:h-36 sm:w-36'}
               showPathHint={testMode}
             />
             <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#1a1612] via-[#1a1612]/40 to-black/25" />
-            <div className="font-body absolute inset-x-0 top-0 flex flex-wrap items-center gap-2 p-4 text-xs sm:p-5">
+            <div className={`font-body absolute inset-x-0 top-0 flex-wrap items-center gap-2 p-3 text-xs sm:p-4 ${showQuiz ? 'hidden' : 'flex'}`}>
               <span className="inline-flex items-center gap-1 rounded-full border border-white/15 bg-black/45 px-2.5 py-1 text-[#f0e6cc] backdrop-blur-sm">
                 <MapPin className="h-3.5 w-3.5" style={{ color: theme.accent }} />
                 탐방 거점 {stage.order} / {TOTAL}
@@ -1429,26 +1470,31 @@ function BuyeoTimeDetective() {
                 </span>
               )}
             </div>
-            <div className="absolute inset-x-0 bottom-0 flex items-end gap-3 p-4 sm:gap-4 sm:p-6">
+            <div className={`absolute inset-x-0 bottom-0 flex items-end gap-3 sm:gap-4 ${showQuiz ? 'px-4 py-2.5 sm:px-5' : 'p-4 sm:p-5'}`}>
               <div
-                className="hidden h-14 w-14 shrink-0 items-center justify-center rounded-2xl border bg-black/45 backdrop-blur-sm sm:flex"
+                className={`h-12 w-12 shrink-0 items-center justify-center rounded-2xl border bg-black/45 backdrop-blur-sm ${showQuiz ? 'hidden' : 'hidden sm:flex'}`}
                 style={{ borderColor: `${theme.accent}66` }}
               >
                 <StageIcon className="h-7 w-7" style={{ color: theme.accent }} strokeWidth={1.6} />
               </div>
               <div className="min-w-0">
-                <span className="font-body inline-block rounded-full border border-white/15 bg-black/45 px-2.5 py-0.5 text-[11px] text-[#e4d6b4] backdrop-blur-sm sm:text-xs">
-                  {stage.era}
-                </span>
-                <h2 className="font-display mt-1.5 text-2xl leading-tight text-[#fbf3de] drop-shadow-[0_2px_10px_rgba(0,0,0,0.8)] sm:text-4xl">
+                {!showQuiz && (
+                  <span className="font-body inline-block rounded-full border border-white/15 bg-black/45 px-2.5 py-0.5 text-[11px] text-[#e4d6b4] backdrop-blur-sm sm:text-xs">
+                    {stage.era}
+                  </span>
+                )}
+                <h2
+                  className={`font-display leading-tight text-[#fbf3de] drop-shadow-[0_2px_10px_rgba(0,0,0,0.8)] ${showQuiz ? 'text-xl sm:text-2xl' : 'mt-1.5 text-2xl sm:text-3xl'}`}
+                >
                   {stage.name}
                 </h2>
               </div>
             </div>
           </section>
 
-          <div className="flex flex-col gap-5 p-5 sm:p-7">
-            <p className="font-body max-w-prose text-[14px] leading-6 text-[#cdbf9f]">{stage.description}</p>
+          <div className={`flex flex-col ${showQuiz ? 'gap-3 p-4 sm:p-5' : 'gap-4 p-4 sm:p-6'}`}>
+            {/* 문제 풀 때는 설명·대화를 접어서 한 화면에 문제만 */}
+            {!showQuiz && <p className="font-body max-w-prose text-[14px] leading-6 text-[#cdbf9f]">{stage.description}</p>}
 
             {/* 준비 중인 스테이지 */}
             {!isPlayable && (
@@ -1464,7 +1510,7 @@ function BuyeoTimeDetective() {
             )}
 
             {/* NPC 대화창 */}
-            {isPlayable && activeDialogue && (
+            {isPlayable && activeDialogue && !showQuiz && (
               <DialogueBox
                 key={stage.id}
                 speaker={activeDialogue.speaker}
@@ -1520,27 +1566,16 @@ function BuyeoTimeDetective() {
                 attempts={attempts}
                 shakeKey={shakeKey}
                 revealAnswer={testMode && revealAnswer}
+                skipLabel={nextStage ? `${nextStage.name} 먼저 가기` : null}
+                onSkip={nextStage ? () => goToStage(nextStage) : null}
               />
-            )}
-
-            {/* 막혔을 때: 다른 유적지 먼저 조사하기 */}
-            {showQuiz && nextStage && (
-              <div className="font-body flex flex-col gap-2 rounded-2xl border border-[#3a2f20] bg-[#1d1813] px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-[#b8a888]">막혔나요? 순서와 상관없이 다른 유적지부터 조사해도 돼요.</p>
-                <button
-                  onClick={() => goToStage(nextStage)}
-                  className="inline-flex shrink-0 items-center justify-center gap-1 rounded-full border border-[#6b5636] px-4 py-2 text-[#e8dcc0] transition hover:border-[#e2b85c] hover:text-[#f6ecd2] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#e2b85c]/60"
-                >
-                  {nextStage.name} 먼저 가기 <ChevronRight className="h-4 w-4" />
-                </button>
-              </div>
             )}
 
             {/* 피드백 */}
             {feedback && (
               <div
                 role="status"
-                className={`font-body anim-pop flex items-start gap-3 rounded-2xl border p-4 text-sm leading-6 ${feedback.type === 'success'
+                className={`font-body anim-pop flex items-start gap-3 rounded-2xl border text-sm leading-6 ${showQuiz ? 'px-4 py-2.5' : 'p-4'} ${feedback.type === 'success'
                   ? 'success-glow border-[#4f8a5b]/60 bg-[#1d2a1f] text-[#cfeccf]'
                   : 'border-[#9a4632]/60 bg-[#2d1915] text-[#f2c7b9]'
                   }`}
@@ -1551,8 +1586,16 @@ function BuyeoTimeDetective() {
                   <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-[#f08a6c]" />
                 )}
                 <div>
-                  <p className="font-bold">{feedback.type === 'success' ? '봉인 해제 성공' : '오답'}</p>
-                  <p>{feedback.message}</p>
+                  {showQuiz ? (
+                    <p>
+                      <b>{feedback.type === 'success' ? '봉인 해제 성공' : '오답'}</b> · {feedback.message}
+                    </p>
+                  ) : (
+                    <>
+                      <p className="font-bold">{feedback.type === 'success' ? '봉인 해제 성공' : '오답'}</p>
+                      <p>{feedback.message}</p>
+                    </>
+                  )}
                   {feedback.type === 'success' && (
                     <p className="mt-1 text-[#a8d6ae]">
                       획득: <b>{stage.rewardItem.name}</b> · 탐정 수첩에 기록되었습니다.
@@ -1746,22 +1789,27 @@ function Shell({ children }) {
 
         /* 말하는 입 뻐끔뻐끔 + 살짝 끄덕임 */
         .talk-mouth {
-          position: absolute; aspect-ratio: 2 / 1.15; border-radius: 50%;
-          background: radial-gradient(ellipse at 50% 80%, #d0675a 0 30%, #6b1f18 58%, #2b0b08 100%);
-          box-shadow: 0 0 0 1px rgba(70, 25, 18, .45);
-          transform: translate(-50%, -50%) scaleY(0); opacity: 0;
-          transition: opacity .15s, transform .15s;
+          position: absolute; aspect-ratio: 2 / 1.1; border-radius: 45% 45% 50% 50% / 35% 35% 65% 65%;
+          background: radial-gradient(ellipse at 50% 85%, #c96457 0 28%, #6b1f18 60%, #2b0b08 100%);
+          box-shadow: 0 0 0 .5px rgba(70, 25, 18, .5);
+          transform: translate(-50%, -35%) scaleY(calc(var(--open, 0) * .8));
+          opacity: min(1, calc(var(--open, 0) * 6));
         }
-        .talk-mouth.is-talking { opacity: 1; animation: mouthFlap .32s ease-in-out infinite; }
+        /* 음성 없이 글자만 나올 때: 느긋하고 불규칙한 기본 움직임 */
+        .talk-mouth.is-flapping { opacity: 1; animation: mouthFlap 1.5s linear infinite; }
         @keyframes mouthFlap {
-          0%   { transform: translate(-50%, -50%) scaleY(.15); }
-          30%  { transform: translate(-50%, -50%) scaleY(.9); }
-          55%  { transform: translate(-50%, -50%) scaleY(.35); }
-          80%  { transform: translate(-50%, -50%) scaleY(.75); }
-          100% { transform: translate(-50%, -50%) scaleY(.15); }
+          0%   { transform: translate(-50%, -35%) scaleY(.08); }
+          12%  { transform: translate(-50%, -35%) scaleY(.55); }
+          24%  { transform: translate(-50%, -35%) scaleY(.15); }
+          38%  { transform: translate(-50%, -35%) scaleY(.4); }
+          50%  { transform: translate(-50%, -35%) scaleY(.08); }
+          63%  { transform: translate(-50%, -35%) scaleY(.6); }
+          76%  { transform: translate(-50%, -35%) scaleY(.2); }
+          88%  { transform: translate(-50%, -35%) scaleY(.45); }
+          100% { transform: translate(-50%, -35%) scaleY(.08); }
         }
-        @keyframes talkBob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-1.5px) rotate(-.3deg); } }
-        .talk-bob { animation: talkBob .64s ease-in-out infinite; }
+        @keyframes talkBob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-1px); } }
+        .talk-bob { animation: talkBob 1.6s ease-in-out infinite; }
         @keyframes rewardPop { 0% { opacity: 0; transform: scale(.6); } 60% { opacity: 1; transform: scale(1.05); } 100% { opacity: 1; transform: scale(1); } }
         .reward-pop { animation: rewardPop .55s cubic-bezier(.2,.9,.3,1.2) both; }
         @keyframes twinkleLoop { 0%, 100% { opacity: 0; transform: scale(.3) rotate(0deg); } 50% { opacity: 1; transform: scale(1) rotate(60deg); } }
@@ -2338,6 +2386,32 @@ const PORTRAIT_TONE = { beast: '#ffd34d', human: '#f6dc94' };
 function CharacterPortrait({ src, name, variant = 'npc', accent, className = '', talking = false }) {
   const tone = PORTRAIT_TONE[variant] || accent;
   const mouth = mouthOf(src);
+  const mouthRef = useRef(null);
+
+  useEffect(() => {
+    const el = mouthRef.current;
+    if (!talking || !el) return undefined;
+    let raf = 0;
+    let open = 0;
+    const tick = () => {
+      const lv = VoicePlayer.level();
+      if (lv == null) {
+        el.classList.add('is-flapping');
+      } else {
+        el.classList.remove('is-flapping');
+        // 소리가 커질 땐 빨리 열고, 작아질 땐 천천히 닫아서 자연스럽게
+        open += (lv - open) * (lv > open ? 0.45 : 0.18);
+        el.style.setProperty('--open', (open < 0.06 ? 0 : open).toFixed(3));
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    tick();
+    return () => {
+      cancelAnimationFrame(raf);
+      el.classList.remove('is-flapping');
+      el.style.setProperty('--open', '0');
+    };
+  }, [talking]);
   return (
     <div className={`portrait-in ${className}`}>
       <div
@@ -2357,7 +2431,8 @@ function CharacterPortrait({ src, name, variant = 'npc', accent, className = '',
             <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-[14px]" aria-hidden="true">
               <div className="absolute left-1/2 top-0 h-full -translate-x-1/2" style={{ aspectRatio: '3 / 4' }}>
                 <span
-                  className={`talk-mouth ${talking ? 'is-talking' : ''}`}
+                  ref={mouthRef}
+                  className="talk-mouth"
                   style={{ left: `${mouth.x}%`, top: `${mouth.y}%`, width: `${mouth.w}%` }}
                 />
               </div>
@@ -2831,6 +2906,8 @@ function QuizPanel({
   attempts,
   shakeKey,
   revealAnswer,
+  skipLabel = null,
+  onSkip = null,
 }) {
   const shakeRef = useRef(null);
   const inputRef = useRef(null);
@@ -2928,14 +3005,27 @@ function QuizPanel({
           )}
         </div>
         <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <button
-            type="button"
-            onClick={toggleHint}
-            aria-expanded={showHint}
-            className="font-body inline-flex items-center justify-center gap-1.5 rounded-full px-3 py-2 text-sm text-[#c9a96b] transition hover:bg-white/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#e2b85c]/50"
-          >
-            <Lightbulb className="h-4 w-4" /> {showHint ? '힌트 숨기기' : '힌트 보기'}
-          </button>
+          <div className="flex flex-wrap items-center justify-center gap-1 sm:justify-start">
+            <button
+              type="button"
+              onClick={toggleHint}
+              aria-expanded={showHint}
+              className="font-body inline-flex items-center justify-center gap-1.5 rounded-full px-3 py-2 text-sm text-[#c9a96b] transition hover:bg-white/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#e2b85c]/50"
+            >
+              <Lightbulb className="h-4 w-4" /> {showHint ? '힌트 숨기기' : '힌트 보기'}
+            </button>
+            {/* 막혔을 때: 순서와 상관없이 다른 유적지 먼저 */}
+            {onSkip && (
+              <button
+                type="button"
+                onClick={onSkip}
+                title="막혔다면 다른 유적지부터 조사해도 돼요"
+                className="font-body inline-flex items-center justify-center gap-1 rounded-full border border-[#4a3b26] px-3 py-1.5 text-sm text-[#b8a888] transition hover:border-[#e2b85c] hover:text-[#f6ecd2] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#e2b85c]/50"
+              >
+                막혔나요? {skipLabel} <ChevronRight className="h-4 w-4" />
+              </button>
+            )}
+          </div>
           <button
             type="submit"
             className="font-body inline-flex items-center justify-center gap-2 rounded-full bg-[#e2b85c] px-6 py-2.5 text-sm font-bold text-[#1a140c] transition hover:bg-[#f0cb75] focus:outline-none focus-visible:ring-4 focus-visible:ring-[#e2b85c]/40 active:scale-[0.98]"
