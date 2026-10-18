@@ -517,7 +517,6 @@ const STAGES = [
     era: '사비 도성의 중심 사찰',
     // 사진 경로: 상대경로(images/...) 또는 https:// 주소. 비워 두면('') 그라데이션 대체 화면이 나옵니다.
     image: 'images/jeongnimsa.jpg',
-    imageFit: 'contain', // 세로 사진: 석탑이 잘리지 않게 전체를 보여 주고 양옆은 흐린 배경으로
     description: '1,400년을 버텨 온 오층석탑이 서 있는 사찰 터. 탑의 돌마다 오래된 글자가 남아 있다.',
     rewardItem: {
       name: '먹물 탁본 조각',
