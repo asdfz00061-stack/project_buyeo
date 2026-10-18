@@ -85,14 +85,9 @@ VOICES = {
         "Soft, warm, sincere and slightly poetic voice, speaking with quiet passion and deep respect for the poet, as if reciting poetry. "
         "Calm, kind and thoughtful pacing with expressive emotional warmth." + _COMMON
     )),
-    # 금동이(정령): 변성기 전 장난꾸러기 소년
+    # 금동이(정령): 남녀 구분 없는 대여섯 살 아기 꾸러기
     "hero_beast": dict(voice="alloy", inst=(
-        "Geumdongi in spirit form, played as a mischievous, cheeky little Korean boy of about nine or ten, before his voice has broken. "
-        "A clear, bright, naturally high-pitched pre-adolescent boy's voice, energetic and playful, like a real elementary school boy who loves adventures. "
-        "Speak with a grin in the voice, a little cocky and full of curiosity, quick and bouncy rhythm, with a playful 'aha!' feeling when discovering a clue. "
-        "When reading a quoted inscription, switch to a dramatic, mysterious whisper as if playing detective. "
-        "It must sound like a boy, not a girl and not a grown woman; no babyish talk, no squeaking, no cartoon exaggeration. "
-        "Natural native Korean pronunciation, studio-quality dry recording."
+        "Geumdongi in spirit form: a tiny golden mascot spirit. Play it as a very young, mischievous little kid of about five or six, with a completely gender-neutral, babyish voice — the listener cannot tell whether it is a boy or a girl. High, round, soft and bubbly toddler-like timbre, cheeky and giggly, bursting with curiosity, a little bit lisping cuteness is fine. Bouncy, playful rhythm like a kid playing detective; when reading the quoted inscription, switch to an exaggerated, spooky little whisper. Never mature, never a grown woman's voice, never a teenager. Natural native Korean pronunciation, studio-quality dry recording."
     )),
     # 금동이(각성): 환희에 찬 열일곱 살 소년 수사관
     "hero_human": dict(voice="verse", inst=(
@@ -138,12 +133,29 @@ def text_hash(s: str) -> str:
     return f"{h:08x}"
 
 
+# 정답을 맞힌 직후 인물의 첫 반응 대사 (clearDialogues 의 첫 줄) 에 덧붙이는 감정 지시
+JOY = (
+    " IMPORTANT for this line: it is the character's reaction the very moment the detective answers the riddle correctly. "
+    "Deliver it with vivid, genuine emotion: a sharp, excited gasp of realization on the first words, then delighted, admiring joy and warm "
+    "relief, as if a long-awaited secret has finally been unlocked. Clearly more animated, expressive and joyful than the character's usual tone, "
+    "while staying fully in character (keep the same age, voice texture and personality)."
+)
+JOY_LINES = set()  # (목소리 id, 대사)
+
+
 def collect_lines(src: str):
     """(목소리 id, 대사) 목록"""
     lines = set()
     hero_lines = []
 
     # 장소 데이터의 { speaker, avatar, [next], text } 대사
+    # 각 clearDialogues 배열의 첫 대사 위치 = 정답 직후 반응
+    joy_starts = set()
+    for cm in re.finditer(r"clearDialogues:\s*\[", src):
+        first = re.compile(r"speaker:").search(src, cm.end())
+        if first:
+            joy_starts.add(first.start())
+
     for m in re.finditer(r"speaker:\s*(NARRATOR|'([^']*)')", src):
         speaker = "NARRATOR" if m.group(1) == "NARRATOR" else m.group(2)
         block = src[m.end(): src.find("}", m.end())]
@@ -155,6 +167,8 @@ def collect_lines(src: str):
             hero_lines.append(text)
         elif speaker in SPEAKERS:
             lines.add((SPEAKERS[speaker], text))
+            if m.start() in joy_starts:
+                JOY_LINES.add((SPEAKERS[speaker], text))
         else:
             print(f"  ! 목소리가 정해지지 않은 인물: {speaker}")
 
@@ -211,7 +225,8 @@ async def make(vid: str, text: str, path: Path, sem: asyncio.Semaphore) -> bool:
         for attempt in range(4):
             try:
                 r = await _client.audio.speech.create(
-                    model=MODEL, voice=cfg["voice"], input=spoken(text), instructions=cfg["inst"], response_format="wav"
+                    model=MODEL, voice=cfg["voice"], input=spoken(text), response_format="wav",
+                    instructions=cfg["inst"] + (JOY if (vid, text) in JOY_LINES else ""),
                 )
                 if not r.content:
                     raise RuntimeError("빈 음성")
