@@ -60,9 +60,13 @@ VOICES = {
         "breaths add realism. Cinematic professional character acting, not theatrical overacting. Studio-quality dry voice recording. No cartoon "
         "villain voice, no artificial bass distortion, no constant shouting, no robotic monotone."
     )),
-    # 뱃사공: 80~90대, 평생 노를 저은 아주 늙은 뱃사공
+    # 뱃사공: 여든 후반~아흔의 아주 늙은 강가 노인, 하오체 (허허, ~이오, ~구려)
     "boatman": dict(voice="ash", inst=(
-        "A very old Korean man in his late eighties or early nineties who has rowed a boat on the Baengma River his whole life. A frail, thin, trembling and heavily weathered elderly voice, hoarse and crackly with age, slightly breathy, as if speaking takes a little effort. Very slow, unhurried pace with pauses to catch his breath, soft countryside warmth and gentle kindness, and quiet sadness about Baekje's history. Must sound unmistakably ancient, like a great-grandfather, absolutely not young, strong, or middle-aged. Natural native Korean pronunciation, realistic character acting, studio-quality dry recording. No cartoonish exaggeration."
+        "A frail, very old Korean boatman in his late eighties or nineties who has rowed the Baengma River for over seventy years. "
+        "An unmistakably ancient great-grandfather voice: thin, shaky, crackly and wheezy with age, hoarse breath between phrases, "
+        "a little toothless softness, slow and unhurried. Warm, kindly and folksy, with an easygoing chuckle ('허허'), "
+        "speaking old-fashioned 하오체 (~이오, ~구려, ~시오) like a village elder by the river, with a touch of melancholy for Baekje. "
+        "Never strong, never middle-aged, never formal or stiff. Natural native Korean pronunciation, realistic character acting, studio-quality dry recording."
     )),
     # 궁녀: 20대 초반의 아름다운 궁녀 (사용자 지시문)
     "court_lady": dict(voice="sage", inst=(
@@ -73,11 +77,13 @@ VOICES = {
         "with natural native pronunciation and subtle historical-drama elegance. Sound poised, refined, charming and welcoming, with a gentle smile "
         "in the voice. Avoid childish squeaking, exaggerated cuteness, breathy whispering, robotic narration, and theatrical overacting."
     )),
-    # 능지기: 엄숙하고 신비로운 무덤지기
+    # 능지기: 왕릉을 지키는 엄숙한 노인, 하옵소체 (~이옵니다, ~사옵니다, ~시옵소서)
     "tomb_keeper": dict(voice="onyx", inst=(
-        "An old, solemn Korean tomb keeper in his late sixties who has guarded the royal tombs of Baekje for decades. "
-        "Low, deep, quiet and grave voice with a mysterious, reverent atmosphere, speaking slowly as if not to disturb the sleeping kings. "
-        "Slightly rough, aged texture, measured pauses, dignified and a little eerie, like the guardian of an ancient secret." + _COMMON
+        "An old, solemn Korean tomb keeper in his late sixties who has served and guarded the royal tombs of Baekje all his life. "
+        "Deep, low, hushed and reverent voice, almost whispering as if not to wake the sleeping kings, with slow, measured, ceremonial pacing "
+        "and long respectful pauses. He speaks in archaic, deeply deferential 하옵소체 (~이옵니다, ~사옵니다, ~시옵소서) like a loyal royal servant — "
+        "mysterious, grave and a little eerie, completely unlike a folksy countryman. "
+        "Natural native Korean pronunciation, polished professional character acting, studio-quality dry recording."
     )),
     # 해설사: 시를 낭송하듯 부드러운 해설사
     "docent": dict(voice="echo", inst=(
@@ -194,9 +200,9 @@ LINE_EXTRA = {
         " IMPORTANT for this line: playful and cheeky — get excited about writing a poem, ponder with a cute '으음…', "
         "then proudly sing-song the silly little verse '금동이는~ 반짝반짝~ 금빛~!' and burst into a shy, giggly '헤헤헤!'."
     ),
-    "오셨군요, 수사관님. 어젯밤 자정, 백제금동대향로 진열장에서 금빛이 번쩍이더니 향로에 깃든 일곱 개의 봉인이 사라졌습니다.": (
+    "오셨군요, 금동이 수사관님. 어젯밤 자정, 백제금동대향로 진열장에서 금빛이 번쩍이더니 향로에 깃든 일곱 개의 봉인이 사라졌습니다.": (
         " IMPORTANT for this line: it is her very first greeting, so make it noticeably brighter and faster. "
-        "Open with a cheerful, bubbly, relieved '오셨군요, 수사관님!' with a big smile in the voice, as if she has been anxiously waiting and is so glad he came. "
+        "Open with a cheerful, bubbly, relieved '오셨군요, 금동이 수사관님!' with a big smile in the voice, as if she has been anxiously waiting and is so glad he came. "
         "Then tell what happened in a quick, lively, excited rush, like eagerly sharing big news — brisk upbeat pace, rising energetic intonation, "
         "only a brief hush of wonder on '금빛이 번쩍이더니'. Not stiff, not formal, not slow."
     ),
@@ -241,7 +247,7 @@ def collect_lines(src: str):
         m = re.search(name + r"\s*=\s*(?:" + STR + ")", src)
         return unescape(m.group(1) if m.group(1) is not None else m.group(2))
 
-    finale, awaken = const("FINALE_LINE"), const("AWAKEN_LINE")
+    awaken = const("AWAKEN_LINE")
     lines.add(("narrator", const("INTRO_NARRATION")))  # 시작 화면 소개 글
     lines.add(("hero_beast", awaken))
     AWAKEN_LINES.add(("hero_beast", awaken))
@@ -249,13 +255,12 @@ def collect_lines(src: str):
         t = const(const_name)
         lines.add((vid, t))
         SCENE_INST[t] = inst
-    guide_block = re.search(r"const GUIDE_LINES = \{(.*?)\n\};", src, re.S).group(1)
-    for m in re.finditer(r"^\s*'?([^':\n]+?)'?:\s*(?:" + STR + ")", guide_block, re.M):
-        speaker = m.group(1).strip()
-        lines.add((SPEAKERS[speaker], unescape(m.group(2) if m.group(2) is not None else m.group(3))))
-    for speaker, vid in SPEAKERS.items():
-        if speaker != "NARRATOR":
-            lines.add((vid, finale))
+    # 인물별 남은 봉인 안내 · 마지막 완성 대사
+    for block_name in ("GUIDE_LINES", "FINALE_LINES"):
+        block = re.search(r"const " + block_name + r" = \{(.*?)\n\};", src, re.S).group(1)
+        for m in re.finditer(r"^\s*'?([^':\n]+?)'?:\s*(?:" + STR + ")", block, re.M):
+            speaker = m.group(1).strip()
+            lines.add((SPEAKERS[speaker], unescape(m.group(2) if m.group(2) is not None else m.group(3))))
     return sorted(lines)
 
 
@@ -263,8 +268,8 @@ SPOKEN_OVERRIDE = {
     "히익, 깜짝이야! …괜찮아, 난 향로의 정령이라고! 역사라면 자신 있어요!":
         "히이익! 깜짝이야!! …괘, 괜찮아! 난 향로의 정령이라고! 역사라면 자신 있어요!!",
     "드디어… 드디어 본래 모습을 되찾았어!": "드디어…! 드디어 본래 모습을 되찾았어!!! 해냈다아!! 하하하!",
-    "오셨군요, 수사관님. 어젯밤 자정, 백제금동대향로 진열장에서 금빛이 번쩍이더니 향로에 깃든 일곱 개의 봉인이 사라졌습니다.":
-        "오셨군요, 수사관님! 어젯밤 자정, 백제금동대향로 진열장에서 금빛이 번쩍이더니, 향로에 깃든 일곱 개의 봉인이 사라졌습니다!",
+    "오셨군요, 금동이 수사관님. 어젯밤 자정, 백제금동대향로 진열장에서 금빛이 번쩍이더니 향로에 깃든 일곱 개의 봉인이 사라졌습니다.":
+        "오셨군요, 금동이 수사관님! 어젯밤 자정, 백제금동대향로 진열장에서 금빛이 번쩍이더니, 향로에 깃든 일곱 개의 봉인이 사라졌습니다!",
     "이 빛은…! 일곱 봉인의 힘이 하나로 모여 몸 안으로 흘러들어 와…!":
         "이 빛은…!! 일곱 봉인의 힘이… 하나로 모여… 몸 안으로 흘러들어 와…!!",
     "봉황 깃털이다! 앗, 몸이 살짝 따뜻해졌어. 봉인을 다 모으면 나 어떻게 되는 거지?":
@@ -286,13 +291,34 @@ def spoken(text: str) -> str:
 _client = None
 
 
-def encode_mp3(wav_bytes: bytes, path: Path) -> None:
+def age_voice(y, sr):
+    """아주 늙은 목소리로: 살짝 낮추고, 떨림을 넣고, 소리를 조금 탁하게 (뱃사공용)"""
+    import librosa
+    import numpy as np
+    from scipy.signal import butter, lfilter
+
+    y = librosa.effects.pitch_shift(y.astype(np.float32), sr=sr, n_steps=-1.3)
+    t = np.arange(len(y)) / sr
+    y = y * (1 - 0.16 * (0.5 + 0.5 * np.sin(2 * np.pi * 5.6 * t)))  # 노인 특유의 떨림
+    b, a = butter(2, 3800 / (sr / 2), "low")  # 탁하고 오래된 느낌
+    y = lfilter(b, a, y)
+    return np.clip(y / (np.max(np.abs(y)) + 1e-9) * 0.92, -1, 1)
+
+
+AGED = {"boatman"}  # 목소리에 노화 처리를 하는 인물
+
+
+def encode_mp3(wav_bytes: bytes, path: Path, vid: str = "") -> None:
     """말소리용으로 가볍게 저장 (모노 56kbps · 태블릿에서 빨리 받도록)"""
     import io
 
     import soundfile as sf
 
     y, sr = sf.read(io.BytesIO(wav_bytes))
+    if y.ndim > 1:
+        y = y.mean(axis=1)
+    if vid in AGED:
+        y = age_voice(y, sr)
     sf.write(str(path), y, sr, format="MP3", bitrate_mode="CONSTANT", compression_level=0.7)
 
 
@@ -313,7 +339,7 @@ async def make(vid: str, text: str, path: Path, sem: asyncio.Semaphore) -> bool:
                 )
                 if not r.content:
                     raise RuntimeError("빈 음성")
-                encode_mp3(r.content, path)
+                encode_mp3(r.content, path, vid)
                 return True
             except Exception as e:  # 일시 오류는 잠시 쉬었다가 다시 시도
                 last = e

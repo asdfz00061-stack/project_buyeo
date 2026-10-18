@@ -152,7 +152,7 @@ const VOICE = {
   학예연구사: { id: 'curator', pitch: 1.2, rate: 1.03, playbackRate: 1.15 },
   노승: { id: 'monk', pitch: 0.7, rate: 0.85, playbackRate: 1.15 },
   '백제 수문장': { id: 'gatekeeper', pitch: 0.6, rate: 0.95, playbackRate: 1.15 },
-  뱃사공: { id: 'boatman', pitch: 0.8, rate: 0.9, playbackRate: 1.15 },
+  뱃사공: { id: 'boatman', pitch: 0.8, rate: 0.9, playbackRate: 1.05 }, // 아주 나이 든 뱃사공은 조금 느리게
   궁녀: { id: 'court_lady', pitch: 1.35, rate: 1, playbackRate: 1.25 },
   능지기: { id: 'tomb_keeper', pitch: 0.65, rate: 0.85, playbackRate: 1.15 },
   해설사: { id: 'docent', pitch: 0.95, rate: 1, playbackRate: 1.15 },
@@ -521,7 +521,7 @@ const STAGES = [
       {
         speaker: '학예연구사',
         avatar: './images/characters/curator.png',
-        text: '오셨군요, 수사관님. 어젯밤 자정, 백제금동대향로 진열장에서 금빛이 번쩍이더니 향로에 깃든 일곱 개의 봉인이 사라졌습니다.',
+        text: '오셨군요, 금동이 수사관님. 어젯밤 자정, 백제금동대향로 진열장에서 금빛이 번쩍이더니 향로에 깃든 일곱 개의 봉인이 사라졌습니다.',
       },
       {
         speaker: '학예연구사',
@@ -742,12 +742,12 @@ const STAGES = [
       {
         speaker: '뱃사공',
         avatar: './images/characters/boatman.png',
-        text: '구드래나루에서 고란사까지 노를 젓는 뱃사공입니다. 물결 아래로 백제의 슬픈 역사가 흐르고 있지요.',
+        text: '허허, 구드래나루에서 고란사까지 평생 노를 저어 온 뱃사공이오. 이 물결 아래로 백제의 슬픈 역사가 흐르고 있다오.',
       },
       {
         speaker: '뱃사공',
         avatar: './images/characters/boatman.png',
-        text: '백마강은 금강 줄기 중에서도 부여를 감싸 흐르는 이 구간을 특별히 부르는 이름입니다.',
+        text: '백마강은 금강 줄기 가운데서도 부여를 감싸 흐르는 이 구간을 일컫는 이름이오.',
       },
       {
         speaker: '수사관 (나)',
@@ -757,7 +757,7 @@ const STAGES = [
       {
         speaker: '뱃사공',
         avatar: './images/characters/boatman.png',
-        text: '저기 깎아지른 절벽 낙화암을 보십시오. 꽃처럼 떨어진 넋을 기리기 위해 절벽 꼭대기에 세운 육각 정자가 무엇인지 아십니까?',
+        text: '저기 깎아지른 절벽, 낙화암을 보시오. 꽃처럼 떨어진 넋을 기리려 절벽 꼭대기에 세운 육각 정자가 무엇인지 아시오?',
       },
     ],
     quiz: {
@@ -773,7 +773,7 @@ const STAGES = [
       {
         speaker: '뱃사공',
         avatar: './images/characters/boatman.png',
-        text: '맞습니다, 백화정이지요. 꽃처럼 떨어진 여인들의 넋이 꽃이 되어 피어난 곳입니다.',
+        text: '허허, 맞소! 백화정이오. 꽃처럼 떨어진 여인들의 넋이 꽃이 되어 피어난 곳이라오.',
       },
       {
         speaker: '수사관 (나)',
@@ -785,7 +785,7 @@ const STAGES = [
         speaker: '뱃사공',
         avatar: './images/characters/boatman.png',
         next: 'gungnamji',
-        text: '나침반 바늘이 남쪽, 아름다운 연못이 있는 궁남지를 가리키고 있군요.',
+        text: '나침반 바늘이 남쪽, 고운 연못이 있는 궁남지를 가리키고 있구려.',
       },
     ],
   },
@@ -814,12 +814,12 @@ const STAGES = [
       {
         speaker: '궁녀',
         avatar: './images/characters/court_lady.png',
-        text: '궁궐 남쪽에 못을 파고 이십여 리 밖에서 물을 끌어들여 만든 우리나라 최초의 인공 연못이랍니다.',
+        text: '궁궐 남쪽에 못을 파고, 이십여 리 밖에서 물을 끌어와 만든 우리나라 최초의 인공 연못이에요.',
       },
       {
         speaker: '궁녀',
         avatar: './images/characters/court_lady.png',
-        text: '여름이면 연꽃이 만발하고, 연못 한가운데 포룡정으로 향하는 다리는 운치가 있지요.',
+        text: '여름이면 연꽃이 가득 피고, 연못 한가운데 포룡정으로 이어지는 다리가 정말 예뻐요.',
       },
       {
         speaker: '수사관 (나)',
@@ -829,7 +829,7 @@ const STAGES = [
       {
         speaker: '궁녀',
         avatar: './images/characters/court_lady.png',
-        text: '이 연못을 만든 백제의 제30대 왕은 어릴 적 마를 캐며 서동요를 불렀던 인물입니다. 그 왕의 이름(시호)은 무엇일까요?',
+        text: '이 연못을 만든 백제의 제30대 왕은 어릴 적 마를 캐며 서동요를 불렀던 분이에요. 그 왕의 이름(시호)이 뭘까요?',
       },
     ],
     quiz: {
@@ -845,7 +845,7 @@ const STAGES = [
       {
         speaker: '궁녀',
         avatar: './images/characters/court_lady.png',
-        text: '무왕이시지요! 마를 캐던 소년 서동에서 한 나라의 위대한 왕이 되신 분이랍니다.',
+        text: '무왕이세요! 마를 캐던 소년 서동이 한 나라의 위대한 왕이 되셨거든요.',
       },
       {
         speaker: '수사관 (나)',
@@ -857,7 +857,7 @@ const STAGES = [
         speaker: '궁녀',
         avatar: './images/characters/court_lady.png',
         next: 'royaltombs',
-        text: '이제 역대 왕들이 고이 잠들어 계신 부여왕릉원으로 가보셔야 합니다.',
+        text: '이제 역대 왕들이 고이 잠들어 계신 부여왕릉원으로 가 보세요.',
       },
     ],
   },
@@ -886,12 +886,12 @@ const STAGES = [
       {
         speaker: '능지기',
         avatar: './images/characters/tomb_keeper.png',
-        text: '이곳은 사비 시대 백제의 역대 왕과 왕족들이 영면해 계신 신성한 능산리 고분군입니다.',
+        text: '이곳은 사비 시대 백제의 역대 임금님과 왕족들께서 고이 잠들어 계신 신성한 능산리 고분군이옵니다.',
       },
       {
         speaker: '능지기',
         avatar: './images/characters/tomb_keeper.png',
-        text: '특히 1호분 동하총 벽면에는 무덤을 수호하는 네 방위의 신수가 그려져 있었지요.',
+        text: '특히 1호분 동하총 벽에는 무덤을 지키는 네 방위의 신수가 그려져 있었사옵니다.',
       },
       {
         speaker: '수사관 (나)',
@@ -901,7 +901,7 @@ const STAGES = [
       {
         speaker: '능지기',
         avatar: './images/characters/tomb_keeper.png',
-        text: "벽화 속 사신도 중 '동쪽'과 '서쪽'을 수호하는 신수의 올바른 짝을 맞추어야 결계가 풀립니다.",
+        text: "벽화 속 사신도 가운데 '동쪽'과 '서쪽'을 지키는 신수의 올바른 짝을 맞추셔야 결계가 풀리옵니다.",
       },
     ],
     quiz: {
@@ -917,7 +917,7 @@ const STAGES = [
       {
         speaker: '능지기',
         avatar: './images/characters/tomb_keeper.png',
-        text: '동쪽의 청룡과 서쪽의 백호가 맞소! 천년의 어둠 속에서도 벽화는 선명한 빛을 품고 있었지요.',
+        text: '동쪽의 청룡, 서쪽의 백호… 맞사옵니다! 천년의 어둠 속에서도 벽화는 선명한 빛을 품고 있었사옵니다.',
       },
       {
         speaker: '수사관 (나)',
@@ -929,7 +929,7 @@ const STAGES = [
         speaker: '능지기',
         avatar: './images/characters/tomb_keeper.png',
         next: 'sindongyeop',
-        text: '일곱 번째 봉인은 백제의 얼을 현대의 언어로 노래한 신동엽 문학관에 있습니다.',
+        text: '일곱 번째 봉인은 백제의 얼을 오늘의 말로 노래한 신동엽 문학관에 있사옵니다.',
       },
     ],
   },
@@ -958,7 +958,7 @@ const STAGES = [
       {
         speaker: '해설사',
         avatar: './images/characters/docent.png',
-        text: '수사관님, 이번 여정은 백제의 고도 부여에서 태어나 역사를 노래한 민족시인 신동엽 문학관입니다.',
+        text: '금동이 수사관님, 이번 여정은 백제의 고도 부여에서 태어나 역사를 노래한 민족시인 신동엽 문학관입니다.',
       },
       {
         speaker: '해설사',
@@ -1011,7 +1011,16 @@ const INTRO_NARRATION =
   '국립부여박물관의 백제금동대향로에 깃든 일곱 봉인이 풀려 부여의 유적지로 흩어졌습니다. 특별 수사관인 당신은 각 장소를 탐방하고 단서를 풀어 봉인을 되찾아야 합니다.';
 
 // 공통 대사 (음성 파일을 미리 만들 수 있도록 고정 문장으로 둡니다)
-const FINALE_LINE = '일곱 개의 봉인이 모두 모였습니다! 어서 국립부여박물관의 향로로 돌아가 의식을 완성하십시오!';
+// 일곱 봉인을 다 모았을 때 마지막 장소 인물이 하는 말 (인물 말투대로)
+const FINALE_LINES = {
+  학예연구사: '일곱 개의 봉인이 모두 모였어요! 어서 국립부여박물관의 향로로 돌아가 의식을 완성해 주세요!',
+  노승: '나무아미타불… 일곱 봉인이 모두 모였구려. 어서 향로로 돌아가 의식을 완성하시게.',
+  '백제 수문장': '일곱 봉인이 모두 모였다! 지체 말고 향로로 돌아가 의식을 완성하거라!',
+  뱃사공: '허허, 일곱 봉인이 다 모였구려! 어서 박물관 향로로 돌아가 의식을 마치시오.',
+  궁녀: '일곱 봉인이 다 모였어요! 어서 향로로 돌아가서 의식을 완성해 주세요!',
+  능지기: '일곱 봉인이 모두 모였사옵니다. 어서 향로로 돌아가 의식을 완성하시옵소서.',
+  해설사: '일곱 개의 봉인이 모두 모였습니다! 어서 국립부여박물관의 향로로 돌아가 의식을 완성해 주세요.',
+};
 // 엔딩 변신 장면의 금동이 목소리: 기운이 차오를 때(정령) · 변신 직후(인간)
 const AWAKEN_SURGE = '으… 으으… 으아아아앗!';
 const AWAKEN_REVEAL = '드디어… 드디어 본래 모습을 되찾았어!';
@@ -1020,9 +1029,9 @@ const GUIDE_LINES = {
   학예연구사: '아직 찾지 못한 봉인이 남아 있어요. 지도에서 남은 유적지를 골라 수사를 이어 가 주세요.',
   노승: '아직 거두지 못한 봉인이 남아 있소. 지도를 펼쳐 남은 곳으로 발길을 옮기시게.',
   '백제 수문장': '아직 되찾지 못한 봉인이 남아 있다! 지도를 보고 남은 곳으로 서둘러 가거라.',
-  뱃사공: '아직 찾을 봉인이 남아 있지요. 지도를 보시고 남은 유적지로 노를 저어 가 보시구려.',
-  궁녀: '아직 잠든 봉인이 남아 있답니다. 지도에서 남은 유적지를 찾아가 보셔요.',
-  능지기: '아직 깨어나지 않은 봉인이 남아 있소. 지도에서 남은 곳을 찾아가 보시오.',
+  뱃사공: '허허, 아직 찾을 봉인이 남아 있구려. 지도를 보고 남은 유적지로 노를 저어 가 보시오.',
+  궁녀: '아직 잠든 봉인이 남아 있어요. 지도에서 남은 유적지를 찾아가 보세요.',
+  능지기: '아직 깨어나지 않은 봉인이 남아 있사옵니다. 지도에서 남은 곳을 찾아가 보시옵소서.',
   해설사: '아직 찾지 못한 봉인이 남아 있습니다. 지도에서 남은 유적지를 골라 보세요.',
 };
 
@@ -1035,7 +1044,7 @@ const buildClearDialogues = (s, visited) => {
   if (remaining === 0) {
     return [
       ...lines,
-      { speaker: npc.speaker, avatar: npc.avatar, text: FINALE_LINE },
+      { speaker: npc.speaker, avatar: npc.avatar, text: FINALE_LINES[npc.speaker] || FINALE_LINES.해설사 },
       { speaker: '수사관 (나)', avatar: null, text: AWAKEN_LINE },
     ];
   }
@@ -2408,7 +2417,7 @@ function EndingScreen({ inventory, completedAt, mistakeCount, hintCount, onOpenN
           speaker="학예연구사"
           role="국립부여박물관 학예연구사"
           avatar="./images/characters/curator.png"
-          text="수사관님 덕분에 향로가 제자리를 찾았어요. 봉황이 다시 날개를 펼쳤으니, 부여의 시간도 다시 흐르기 시작할 거예요."
+          text="금동이 수사관님 덕분에 향로가 제자리를 찾았어요. 봉황이 다시 날개를 펼쳤으니, 부여의 시간도 다시 흐르기 시작할 거예요."
         />
       </div>
 
