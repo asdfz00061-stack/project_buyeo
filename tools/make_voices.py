@@ -184,6 +184,12 @@ STANDARD = (
 
 # 특정 대사에만 덧붙이는 연기 지시 (대사 글 → 추가 지시)
 LINE_EXTRA = {
+    "청동 거울에 내 얼굴이… 어? 방금 거울 속에 처음 보는 형아가 비친 것 같은데?!": (
+        " IMPORTANT for this line: unhurried, with clear pauses. Start slow and curious, leaning in to peer at the mirror — "
+        "'청동 거울에 내 얼굴이…' trailing off softly. Then a sudden, startled little '어?' after a short beat of silence. "
+        "Then, half spooked and half amazed, eyes wide, '방금 거울 속에 처음 보는 형아가 비친 것 같은데?!' rising with goosebumps-y wonder "
+        "and ending on an excited, disbelieving question. Big, vivid emotion, never rushed."
+    ),
     "국립부여박물관의 백제금동대향로에 깃든 일곱 봉인이 풀려 부여의 유적지로 흩어졌습니다. 특별 수사관인 당신은 각 장소를 탐방하고 단서를 풀어 봉인을 되찾아야 합니다.": (
         " 이 대사는 게임의 첫 장면이다: 억양을 아주 크게, 극적으로 살린다. '일곱 봉인이 풀려'에서 목소리를 낮추고 신비롭게 끌다가 "
         "'흩어졌습니다'에서 놀란 듯 힘을 주고, 잠깐 쉰 뒤 '특별 수사관인 당신은'을 듣는 사람을 콕 집듯 또렷하게 부르며, "

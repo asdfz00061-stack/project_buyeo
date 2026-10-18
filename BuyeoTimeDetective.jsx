@@ -174,6 +174,10 @@ const HERO_VOICE = {
   beast: { id: 'hero_beast', pitch: 1.6, rate: 1.08, playbackRate: 1.4 },
   human: { id: 'hero_human', pitch: 1.1, rate: 1.02, playbackRate: 1.4 }, // 각성 장면은 빠르게 해야 벅찬 감정이 살아남
 };
+// 대사별 재생 속도 (인물 기본 속도보다 천천히 감정을 살려야 하는 대사)
+const LINE_RATE = {
+  '청동 거울에 내 얼굴이… 어? 방금 거울 속에 처음 보는 형아가 비친 것 같은데?!': 1.15,
+};
 
 // 대사 → 음성 파일 경로 (tools/make_voices.py 와 같은 FNV-1a 해시)
 const textHash = (s) => {
@@ -3345,7 +3349,7 @@ function DialogueBox({
   const voiceId = voiceProfile?.id;
   const pitch = voiceProfile?.pitch ?? 1;
   const rate = voiceProfile?.rate ?? 1;
-  const playbackRate = voiceProfile?.playbackRate ?? 1;
+  const playbackRate = LINE_RATE[text] ?? voiceProfile?.playbackRate ?? 1;
 
   // 음성 읽기: 인물별로 미리 만든 음성 파일을 재생 (없으면 브라우저 내장 음성), 넘기면 바로 멈춤
   useEffect(() => {
