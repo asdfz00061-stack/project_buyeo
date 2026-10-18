@@ -1021,8 +1021,7 @@ const FINALE_LINES = {
   능지기: '일곱 봉인이 모두 모였사옵니다. 어서 향로로 돌아가 의식을 완성하시옵소서.',
   해설사: '일곱 개의 봉인이 모두 모였습니다! 어서 국립부여박물관의 향로로 돌아가 의식을 완성해 주세요.',
 };
-// 엔딩 변신 장면의 금동이 목소리: 기운이 차오를 때(정령) · 변신 직후(인간)
-const AWAKEN_SURGE = '으… 으으… 으아아아앗!';
+// 엔딩 변신 장면의 금동이 목소리: 변신 직후(인간)
 const AWAKEN_REVEAL = '드디어… 드디어 본래 모습을 되찾았어!';
 const AWAKEN_LINE = '이 빛은…! 일곱 봉인의 힘이 하나로 모여 몸 안으로 흘러들어 와…!'; // 변신 직전 (정령 모습으로 말하고, 변신은 엔딩 연출에서)
 const GUIDE_LINES = {
@@ -3087,8 +3086,7 @@ function AwakeningOverlay({ sfxOn, voiceOn, onDone }) {
     if (sfxOn) Sound.awaken();
     const timers = [setTimeout(() => setPhase('reveal'), 2900), setTimeout(() => setPhase('done'), 5200)];
     if (voiceOn) {
-      // 기운이 차오를 때 정령 금동이의 외침 → 번쩍인 직후 인간 금동이의 외침
-      timers.push(setTimeout(() => VoicePlayer.play(voiceFile(HERO_VOICE.beast.id, AWAKEN_SURGE), { rate: 1.1 }), 900));
+      // 번쩍인 직후 인간 금동이의 외침
       timers.push(setTimeout(() => VoicePlayer.play(voiceFile(HERO_VOICE.human.id, AWAKEN_REVEAL), { rate: 1.3 }), 3050));
     }
     return () => {

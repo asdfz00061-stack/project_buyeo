@@ -172,13 +172,6 @@ AWAKEN_LINES = set()
 
 # 엔딩 변신 장면 전용 대사와 지시 (목소리 id, 상수 이름, 지시)
 SCENE_LINES = {
-    "AWAKEN_SURGE": ("hero_beast", (
-        "Geumdongi in spirit form: a little kid of about five or six with a high, bubbly, gender-neutral voice. "
-        "The golden power of all seven seals is surging through the tiny body right now. "
-        "Make a short, intense, effortful cry that rises from a trembling, straining groan '으… 으으…' into a big, high, "
-        "thrilling shout '으아아아앗!' as the power explodes — like a kids' anime hero powering up. Loud, vivid, never calm. "
-        "Natural Korean vocalization, studio-quality dry recording."
-    )),
     "AWAKEN_REVEAL": ("hero_human", "You are Geumdongi, a fourteen-year-old Korean boy, the young hero of a fantasy adventure anime, at the exact moment he finally transforms back into his true form after a long journey. He is OVERJOYED — the happiest moment of his life. Shout it out at full volume with explosive, ecstatic joy: a breathless, trembling '드디어…!', then a huge triumphant cry '드디어 본래 모습을 되찾았어!!!' with the voice soaring high and almost cracking with happiness, then a jubilant '해냈다아!!' and bursting into real, heartfelt laughter '하하하!'. Fast, energetic tempo, big pitch jumps, breathy excitement, grinning ear to ear. Clearly a young teenage boy's voice, bright and boyish. Absolutely never flat, calm, slow, or like reading a textbook. Natural native Korean pronunciation, studio-quality dry recording." + HIGH),
 }
 SCENE_INST = {}  # 대사 → 지시 (collect_lines 에서 채움)
