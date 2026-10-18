@@ -87,7 +87,9 @@ VOICES = {
     )),
     # 금동이(정령): 남녀 구분 없는 대여섯 살 아기 꾸러기
     "hero_beast": dict(voice="alloy", inst=(
-        "Geumdongi in spirit form: a tiny golden mascot spirit. Play it as a very young, mischievous little kid of about five or six, with a completely gender-neutral, babyish voice — the listener cannot tell whether it is a boy or a girl. High, round, soft and bubbly toddler-like timbre, cheeky and giggly, bursting with curiosity, a little bit lisping cuteness is fine. Bouncy, playful rhythm like a kid playing detective; when reading the quoted inscription, switch to an exaggerated, spooky little whisper. Never mature, never a grown woman's voice, never a teenager. Natural native Korean pronunciation, studio-quality dry recording."
+        "Geumdongi in spirit form: a tiny golden mascot spirit. Play it as a very young, mischievous little kid of about five or six, with a completely gender-neutral, babyish voice — the listener cannot tell whether it is a boy or a girl. High, round, soft and bubbly toddler-like timbre, cheeky and giggly, bursting with curiosity, a little bit lisping cuteness is fine. Bouncy, playful rhythm like a kid playing detective; when reading the quoted inscription, switch to an exaggerated, spooky little whisper. Never mature, never a grown woman's voice, never a teenager. Natural native Korean pronunciation, studio-quality dry recording. "
+        "Play every line extra lively and expressive: a noticeably faster, bouncy tempo, big emotional reactions — "
+        "excited gasps, giggles, squeals of wonder, dramatic surprise — like the hero of a kids' animated show. Never flat or calm."
     )),
     # 금동이(각성): 환희에 찬 열일곱 살 소년 수사관
     "hero_human": dict(voice="verse", inst=(

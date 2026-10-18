@@ -158,7 +158,7 @@ const VOICE = {
   해설사: { id: 'docent', pitch: 0.95, rate: 1, playbackRate: 1.15 },
 };
 const HERO_VOICE = {
-  beast: { id: 'hero_beast', pitch: 1.6, rate: 1.08, playbackRate: 1.1 },
+  beast: { id: 'hero_beast', pitch: 1.6, rate: 1.08, playbackRate: 1.25 },
   human: { id: 'hero_human', pitch: 1.1, rate: 1.02, playbackRate: 1.3 }, // 각성 장면은 빠르게 해야 벅찬 감정이 살아남
 };
 
