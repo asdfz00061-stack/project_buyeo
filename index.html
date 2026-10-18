@@ -570,6 +570,7 @@ const STAGES = [
     era: '사비 도성의 중심 사찰',
     // 사진 경로: 상대경로(images/...) 또는 https:// 주소. 비워 두면('') 그라데이션 대체 화면이 나옵니다.
     image: 'images/jeongnimsa.jpg',
+    imageFit: 'contain', // 세로 사진: 석탑이 잘리지 않게 전체를 보여 주고 양옆은 흐린 배경으로
     description: '1,400년을 버텨 온 오층석탑이 서 있는 사찰 터. 탑의 돌마다 오래된 글자가 남아 있다.',
     rewardItem: {
       name: '먹물 탁본 조각',
@@ -889,7 +890,7 @@ const STAGES = [
         speaker: '능지기',
         avatar: './images/characters/tomb_keeper.png',
         next: 'sindongyeop',
-        text: '마지막 일곱 번째 봉인은 백제의 얼을 현대의 언어로 노래한 신동엽 문학관에 있습니다.',
+        text: '일곱 번째 봉인은 백제의 얼을 현대의 언어로 노래한 신동엽 문학관에 있습니다.',
       },
     ],
   },
@@ -933,7 +934,7 @@ const STAGES = [
       {
         speaker: '해설사',
         avatar: './images/characters/docent.png',
-        text: '마지막 봉인을 풀려면 모든 가식과 껍데기를 몰아내자는 그의 대표 시 구절을 완성해야 합니다.',
+        text: '이 봉인을 풀려면 모든 가식과 껍데기를 몰아내자는 그의 대표 시 구절을 완성해야 합니다.',
       },
     ],
     quiz: {
@@ -1525,6 +1526,7 @@ function BuyeoTimeDetective() {
               src={stage.image}
               alt={`${stage.name} 풍경`}
               stageId={stage.id}
+              fit={stage.imageFit || 'cover'}
               className="aspect-[16/9] w-full sm:aspect-[21/9]"
               iconClassName="h-36 w-36 sm:h-52 sm:w-52"
               showPathHint={testMode}
@@ -1983,7 +1985,7 @@ function Shell({ children }) {
 }
 
 /* 유적지 사진 + 대체(Fallback) 화면 */
-function StageImage({ src, alt, stageId, className = '', iconClassName = 'h-16 w-16', showPathHint = false }) {
+function StageImage({ src, alt, stageId, className = '', iconClassName = 'h-16 w-16', showPathHint = false, fit = 'cover' }) {
   const theme = THEME[stageId];
   const Icon = theme.icon;
   const [status, setStatus] = useState(src ? 'loading' : 'error'); // loading | loaded | error
@@ -2013,6 +2015,15 @@ function StageImage({ src, alt, stageId, className = '', iconClassName = 'h-16 w
         style={{ color: theme.accent }}
         strokeWidth={0.9}
       />
+      {/* fit=contain: 사진 전체를 보여 주고, 남는 양옆은 같은 사진을 흐리게 깔아 채움 */}
+      {src && status !== 'error' && fit === 'contain' && (
+        <img
+          src={src}
+          alt=""
+          aria-hidden="true"
+          className={`absolute inset-0 h-full w-full scale-110 object-cover blur-xl brightness-75 transition-opacity duration-700 ${status === 'loaded' ? 'opacity-90' : 'opacity-0'}`}
+        />
+      )}
       {src && status !== 'error' && (
         <img
           ref={imgRef}
@@ -2021,7 +2032,7 @@ function StageImage({ src, alt, stageId, className = '', iconClassName = 'h-16 w
           loading="lazy"
           onLoad={() => setStatus('loaded')}
           onError={() => setStatus('error')}
-          className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-700 ${status === 'loaded' ? 'opacity-100' : 'opacity-0'}`}
+          className={`absolute inset-0 h-full w-full transition-opacity duration-700 ${fit === 'contain' ? 'object-contain object-[68%_50%] drop-shadow-[0_8px_24px_rgba(0,0,0,0.5)]' : 'object-cover'} ${status === 'loaded' ? 'opacity-100' : 'opacity-0'}`}
         />
       )}
       {showPathHint && status === 'error' && (

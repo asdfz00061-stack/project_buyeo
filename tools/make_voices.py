@@ -148,6 +148,12 @@ AWAKEN = (
 )
 AWAKEN_LINES = set()
 
+# 모든 대사 공통: 사투리 없이 표준어로 (가끔 지방 억양이 섞여 나오는 것 방지)
+STANDARD = (
+    " Speak standard Seoul Korean (표준어) only, with standard pronunciation and intonation — "
+    "absolutely no regional dialect (사투리) or regional accent, and keep exactly the same voice and character throughout."
+)
+
 # 특정 대사에만 덧붙이는 연기 지시 (대사 글 → 추가 지시)
 LINE_EXTRA = {
     "오셨군요, 수사관님. 어젯밤 자정, 백제금동대향로 진열장에서 금빛이 번쩍이더니 향로에 깃든 일곱 개의 봉인이 사라졌습니다.": (
@@ -252,8 +258,8 @@ async def make(vid: str, text: str, path: Path, sem: asyncio.Semaphore) -> bool:
             try:
                 r = await _client.audio.speech.create(
                     model=MODEL, voice=cfg["voice"], input=spoken(text), response_format="wav",
-                    instructions=AWAKEN if (vid, text) in AWAKEN_LINES
-                    else cfg["inst"] + (JOY if (vid, text) in JOY_LINES else "") + LINE_EXTRA.get(text, ""),
+                    instructions=(AWAKEN if (vid, text) in AWAKEN_LINES
+                                  else cfg["inst"] + (JOY if (vid, text) in JOY_LINES else "") + LINE_EXTRA.get(text, "")) + STANDARD,
                 )
                 if not r.content:
                     raise RuntimeError("빈 음성")
