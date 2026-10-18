@@ -172,7 +172,7 @@ AWAKEN_LINES = set()
 
 # 엔딩 변신 장면 전용 대사와 지시 (목소리 id, 상수 이름, 지시)
 SCENE_LINES = {
-    "AWAKEN_REVEAL": ("hero_human", "You are Geumdongi, a fourteen-year-old Korean boy, the young hero of a fantasy adventure anime, at the exact moment he finally transforms back into his true form after a long journey. He is OVERJOYED — the happiest moment of his life. Shout it out at full volume with explosive, ecstatic joy: a breathless, trembling '드디어…!', then a huge triumphant cry '드디어 본래 모습을 되찾았어!!!' with the voice soaring high and almost cracking with happiness, then a jubilant '해냈다아!!' and bursting into real, heartfelt laughter '하하하!'. Fast, energetic tempo, big pitch jumps, breathy excitement, grinning ear to ear. Clearly a young teenage boy's voice, bright and boyish. Absolutely never flat, calm, slow, or like reading a textbook. Natural native Korean pronunciation, studio-quality dry recording." + HIGH),
+    "AWAKEN_REVEAL": ("hero_human", "You are Geumdongi, a fourteen-year-old Korean boy, the young hero of a fantasy adventure anime, at the exact moment he finally transforms back into his true form after a long journey. He is OVERJOYED — the happiest moment of his life. Shout it out at full volume with explosive, ecstatic joy: a huge triumphant cry '드디어 본래 모습을 되찾았어!!!' with the voice soaring high and almost cracking with happiness, then a jubilant '해냈다아!!' and bursting into real, heartfelt laughter '하하하!'. Fast, energetic tempo, big pitch jumps, breathy excitement, grinning ear to ear. Clearly a young teenage boy's voice, bright and boyish. Absolutely never flat, calm, slow, or like reading a textbook. Natural native Korean pronunciation, studio-quality dry recording." + HIGH),
 }
 SCENE_INST = {}  # 대사 → 지시 (collect_lines 에서 채움)
 
@@ -277,7 +277,7 @@ def collect_lines(src: str):
 SPOKEN_OVERRIDE = {
     "히익, 깜짝이야! …괜찮아, 난 향로의 정령이라고! 역사라면 자신 있어요!":
         "히이익! 깜짝이야!! …괘, 괜찮아! 난 향로의 정령이라고! 역사라면 자신 있어요!!",
-    "드디어… 드디어 본래 모습을 되찾았어!": "드디어…! 드디어 본래 모습을 되찾았어!!! 해냈다아!! 하하하!",
+    "드디어 본래 모습을 되찾았어!": "드디어 본래 모습을 되찾았어!!! 해냈다아!! 하하하!",
     "오셨군요, 금동이 수사관님. 어젯밤 자정, 백제금동대향로 진열장에서 금빛이 번쩍이더니 향로에 깃든 일곱 개의 봉인이 사라졌습니다.":
         "오셨군요, 금동이 수사관님! 어젯밤 자정, 백제금동대향로 진열장에서 금빛이 번쩍이더니, 향로에 깃든 일곱 개의 봉인이 사라졌습니다!",
     "이 빛은…! 일곱 봉인의 힘이 하나로 모여 몸 안으로 흘러들어 와…!":
