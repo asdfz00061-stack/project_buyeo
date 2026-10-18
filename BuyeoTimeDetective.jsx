@@ -171,8 +171,8 @@ const VOICE = {
   해설사: { id: 'docent', pitch: 0.95, rate: 1, playbackRate: 1.15 },
 };
 const HERO_VOICE = {
-  beast: { id: 'hero_beast', pitch: 1.6, rate: 1.08, playbackRate: 1.25 },
-  human: { id: 'hero_human', pitch: 1.1, rate: 1.02, playbackRate: 1.3 }, // 각성 장면은 빠르게 해야 벅찬 감정이 살아남
+  beast: { id: 'hero_beast', pitch: 1.6, rate: 1.08, playbackRate: 1.4 },
+  human: { id: 'hero_human', pitch: 1.1, rate: 1.02, playbackRate: 1.4 }, // 각성 장면은 빠르게 해야 벅찬 감정이 살아남
 };
 
 // 대사 → 음성 파일 경로 (tools/make_voices.py 와 같은 FNV-1a 해시)
@@ -3126,7 +3126,7 @@ function AwakeningOverlay({ sfxOn, voiceOn, onDone }) {
     const timers = [setTimeout(() => setPhase('reveal'), 2900), setTimeout(() => setPhase('done'), 5200)];
     if (voiceOn) {
       // 번쩍인 직후 인간 금동이의 외침
-      timers.push(setTimeout(() => VoicePlayer.play(voiceFile(HERO_VOICE.human.id, AWAKEN_REVEAL), { rate: 1.3 }), 3050));
+      timers.push(setTimeout(() => VoicePlayer.play(voiceFile(HERO_VOICE.human.id, AWAKEN_REVEAL), { rate: HERO_VOICE.human.playbackRate }), 3050));
     }
     return () => {
       timers.forEach(clearTimeout);

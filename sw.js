@@ -3,7 +3,7 @@
  * - 버전이 고정된 라이브러리·음성·사진은 한 번 받으면 저장해 두고 재사용 (유적지에서 신호가 약해도 동작)
  * 파일 구성을 크게 바꾸면 CACHE 이름의 숫자를 올려 주세요.
  */
-const CACHE = 'buyeo-detective-v22'; // v22: 부스 체험 모드 (?booth)
+const CACHE = 'buyeo-detective-v23'; // v23: 금동이 대사 1.4배 속도
 const CORE = [
   './',
   './manifest.webmanifest',
