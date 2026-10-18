@@ -108,7 +108,7 @@ const {
  * - 장소 사진:     STAGES[n].image             예: 'images/museum.jpg'
  * - 캐릭터 초상화: dialogues[n].avatar         예: './images/characters/curator.png'
  * - 주인공 금동이: HERO_AVATAR_BEAST / HERO_AVATAR_HUMAN 상수
- * - 보상 아이템:   STAGES[n].rewardItem.image  예: './images/items/phoenix.png'
+ * - 보상 아이템:   STAGES[n].rewardItem.image  예: './images/items/phoenix.webp'
  * - 경로가 비어 있거나 사진을 불러오지 못하면 장소별 그라데이션 + 아이콘
  *   대체 화면이 자동으로 나오므로 레이아웃이 깨지지 않습니다.
  *
@@ -573,8 +573,8 @@ const STAGES = [
     rewardItem: {
       name: '봉황의 깃털 조각',
       shortName: '봉황 깃털',
-      // 보상 아이템 이미지 (투명 배경 PNG 권장). 비워 두면 금빛 메달 아이콘으로 대체됩니다.
-      image: './images/items/phoenix.png',
+      // 보상 아이템 이미지 (투명 배경 PNG·WebP). 비워 두면 금빛 메달 아이콘으로 대체됩니다.
+      image: './images/items/phoenix.webp',
       description: '향로 뚜껑 꼭대기 봉황에게서 떨어져 나온 금빛 깃털. 첫 번째 봉인이다.',
       // 탐정 수첩에서 유물을 누르면 보이는 백제 역사 상식
       trivia: {
@@ -650,8 +650,8 @@ const STAGES = [
     rewardItem: {
       name: '먹물 탁본 조각',
       shortName: '먹물 탁본',
-      // 보상 아이템 이미지 (투명 배경 PNG 권장). 비워 두면 금빛 메달 아이콘으로 대체됩니다.
-      image: './images/items/rubbing.png',
+      // 보상 아이템 이미지 (투명 배경 PNG·WebP). 비워 두면 금빛 메달 아이콘으로 대체됩니다.
+      image: './images/items/rubbing.webp',
       description: '오층석탑 1층 탑신에 새겨진 역사의 흔적이 담긴 탁본.',
       // 탐정 수첩에서 유물을 누르면 보이는 백제 역사 상식
       trivia: {
@@ -722,8 +722,8 @@ const STAGES = [
     rewardItem: {
       name: '고란초 잎',
       shortName: '고란초 잎',
-      // 보상 아이템 이미지 (투명 배경 PNG 권장). 비워 두면 금빛 메달 아이콘으로 대체됩니다.
-      image: './images/items/gorancho.png',
+      // 보상 아이템 이미지 (투명 배경 PNG·WebP). 비워 두면 금빛 메달 아이콘으로 대체됩니다.
+      image: './images/items/gorancho.webp',
       description: '낙화암 아래 고란사 바위틈에서 자란 신비한 잎.',
       // 탐정 수첩에서 유물을 누르면 보이는 백제 역사 상식
       trivia: {
@@ -794,8 +794,8 @@ const STAGES = [
     rewardItem: {
       name: '나루터 나침반',
       shortName: '나침반',
-      // 보상 아이템 이미지 (투명 배경 PNG 권장). 비워 두면 금빛 메달 아이콘으로 대체됩니다.
-      image: './images/items/compass.png',
+      // 보상 아이템 이미지 (투명 배경 PNG·WebP). 비워 두면 금빛 메달 아이콘으로 대체됩니다.
+      image: './images/items/compass.webp',
       description: '물길을 안내하고 사비의 역사를 가리키는 나침반.',
       // 탐정 수첩에서 유물을 누르면 보이는 백제 역사 상식
       trivia: {
@@ -866,8 +866,8 @@ const STAGES = [
     rewardItem: {
       name: '금빛 연꽃 씨앗',
       shortName: '연꽃 씨앗',
-      // 보상 아이템 이미지 (투명 배경 PNG 권장). 비워 두면 금빛 메달 아이콘으로 대체됩니다.
-      image: './images/items/lotus_seed.png',
+      // 보상 아이템 이미지 (투명 배경 PNG·WebP). 비워 두면 금빛 메달 아이콘으로 대체됩니다.
+      image: './images/items/lotus_seed.webp',
       description: '천 년의 세월을 뛰어넘어 피어나는 서동의 연꽃 씨앗.',
       // 탐정 수첩에서 유물을 누르면 보이는 백제 역사 상식
       trivia: {
@@ -938,8 +938,8 @@ const STAGES = [
     rewardItem: {
       name: '사신도 청동 거울',
       shortName: '청동 거울',
-      // 보상 아이템 이미지 (투명 배경 PNG 권장). 비워 두면 금빛 메달 아이콘으로 대체됩니다.
-      image: './images/items/mirror.png',
+      // 보상 아이템 이미지 (투명 배경 PNG·WebP). 비워 두면 금빛 메달 아이콘으로 대체됩니다.
+      image: './images/items/mirror.webp',
       description: '고분 벽화 속 사신도의 기운이 깃든 거울.',
       // 탐정 수첩에서 유물을 누르면 보이는 백제 역사 상식
       trivia: {
@@ -1010,8 +1010,8 @@ const STAGES = [
     rewardItem: {
       name: '순수의 시 구절',
       shortName: '시 구절',
-      // 보상 아이템 이미지 (투명 배경 PNG 권장). 비워 두면 금빛 메달 아이콘으로 대체됩니다.
-      image: './images/items/poem.png',
+      // 보상 아이템 이미지 (투명 배경 PNG·WebP). 비워 두면 금빛 메달 아이콘으로 대체됩니다.
+      image: './images/items/poem.webp',
       description: '껍데기를 몰아내고 알맹이만 남긴 시인의 마지막 열쇠.',
       // 탐정 수첩에서 유물을 누르면 보이는 백제 역사 상식
       trivia: {
@@ -3092,17 +3092,16 @@ function SealScatter() {
   return (
     <div ref={ref} className="pointer-events-none absolute inset-0 z-20" aria-hidden="true">
       {STAGES.map((stage) => {
-        const Item = ITEM_ICON[stage.id];
         const style = { opacity: 0, '--c': THEME[stage.id].accent };
         return (
           <React.Fragment key={stage.id}>
             {[1, 2].map((n) => (
               <span key={n} data-trail={stage.id} className="seal-item absolute left-0 top-0 flex h-10 w-10 items-center justify-center" style={style}>
-                <Item className="h-7 w-7" strokeWidth={1.9} />
+                <img src={stage.rewardItem.image} alt="" draggable="false" className="relative h-9 w-9 object-contain" />
               </span>
             ))}
             <span data-seal={stage.id} className="seal-item absolute left-0 top-0 flex h-10 w-10 items-center justify-center" style={style}>
-              <Item className="h-7 w-7" strokeWidth={1.9} />
+              <img src={stage.rewardItem.image} alt="" draggable="false" className="relative h-9 w-9 object-contain" />
             </span>
           </React.Fragment>
         );
