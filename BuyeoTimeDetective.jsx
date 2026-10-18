@@ -98,6 +98,19 @@ const TEST_ENABLED = (() => {
   }
 })();
 
+// 부스 체험 모드: 주소 끝에 ?booth 를 붙이면 봉인 3개(박물관 + 2곳)만 모아도 엔딩,
+// 진행은 저장하지 않고 엔딩이 끝나면 잠시 뒤 처음 화면으로 돌아갑니다 (다음 체험자를 위해)
+const BOOTH = (() => {
+  try {
+    return new URLSearchParams(window.location.search).has('booth');
+  } catch {
+    return false;
+  }
+})();
+const BOOTH_GOAL = 3;
+const BOOTH_RETURN_SEC = 30;
+const SEVEN = BOOTH ? '' : '일곱 '; // 화면 문구의 '일곱' (부스 모드에서는 빼고 표시)
+
 // 말할 때 움직이는 입 위치: 초상화 이미지(3:4) 기준 %. x·y = 입 중심, w = 입 너비
 // jaw 가 있으면 입을 덧그리지 않고 아랫입술·턱을 살짝 내려 입이 벌어지게 함 (원래 입이 크게 그려진 인물용)
 const MOUTH = {
@@ -1001,7 +1014,7 @@ const STAGES = [
     ],
   },
 ];
-const TOTAL = STAGES.length;
+const TOTAL = BOOTH ? BOOTH_GOAL : STAGES.length; // 엔딩까지 모아야 하는 봉인 수
 
 // 클리어 대화 구성: 장소는 순서와 상관없이 풀 수 있으므로
 // - next 가 붙은 '다음 장소 안내' 대사는 그 장소가 아직 남아 있을 때만 보여 주고
@@ -1070,6 +1083,7 @@ const INITIAL_STATE = {
 
 // 저장된 진행을 읽어 오되, 장소 id 등이 맞지 않는 값은 버리고 기본값으로
 const loadSave = () => {
+  if (BOOTH) return INITIAL_STATE; // 부스 모드는 항상 처음부터
   const s = readJSON(SAVE_KEY);
   if (!s || typeof s !== 'object') return INITIAL_STATE;
   const ids = new Set(STAGES.map((x) => x.id));
@@ -1146,7 +1160,7 @@ export default function BuyeoTimeDetective() {
 
   // 진행할 때마다 저장 (인트로 화면에서는 이전 저장을 덮어쓰지 않음)
   useEffect(() => {
-    if (gameStatus === 'intro') return;
+    if (gameStatus === 'intro' || BOOTH) return;
     writeJSON(SAVE_KEY, {
       currentStageId,
       visitedStages,
@@ -1213,7 +1227,7 @@ export default function BuyeoTimeDetective() {
 
   // ---- 동작 ----
   const resetProgress = () => {
-    removeKey(SAVE_KEY);
+    if (!BOOTH) removeKey(SAVE_KEY); // 부스 모드는 저장을 쓰지 않으므로 기존 저장도 건드리지 않음
     setCurrentStageId(INITIAL_STATE.currentStageId);
     setVisitedStages([]);
     setDialogueStep(0);
@@ -1450,6 +1464,7 @@ export default function BuyeoTimeDetective() {
         />
         {overlays}
         {awakening && <AwakeningOverlay sfxOn={sfxOn} voiceOn={voiceOn} onDone={finishAwakening} />}
+        {BOOTH && !awakening && <BoothReturn seconds={BOOTH_RETURN_SEC} onDone={restartGame} />}
       </Shell>
     );
   }
@@ -1600,7 +1615,7 @@ export default function BuyeoTimeDetective() {
             <div className="font-body absolute inset-x-0 top-0 flex flex-wrap items-center gap-2 p-4 text-xs sm:p-5">
               <span className="inline-flex items-center gap-1 rounded-full border border-white/15 bg-black/45 px-2.5 py-1 text-[#f0e6cc] backdrop-blur-sm">
                 <MapPin className="h-3.5 w-3.5" style={{ color: theme.accent }} />
-                탐방 거점 {stage.order} / {TOTAL}
+                탐방 거점 {stage.order} / {STAGES.length}
               </span>
               {isCleared && (
                 <span className="inline-flex items-center gap-1 rounded-full bg-[#1d2a1f]/80 px-2.5 py-1 text-[#bfe3c3] backdrop-blur-sm">
@@ -2346,7 +2361,7 @@ function EndingScreen({ inventory, completedAt, mistakeCount, hintCount, onOpenN
   return (
     <div className="mx-auto flex max-w-3xl flex-col items-center px-4 pb-14 pt-8 text-center">
       <p className="font-body inline-flex items-center gap-1.5 rounded-full border border-[#e2b85c]/40 bg-[#e2b85c]/10 px-3 py-1 text-xs tracking-[0.2em] text-[#e2b85c]">
-        <Sparkles className="h-3.5 w-3.5" /> 일곱 봉인 회수 완료
+        <Sparkles className="h-3.5 w-3.5" /> {SEVEN}봉인 회수 완료
       </p>
 
       {/* 금동이 각성(변신) 연출 */}
@@ -2402,7 +2417,7 @@ function EndingScreen({ inventory, completedAt, mistakeCount, hintCount, onOpenN
         백제금동대향로 완전 복원!
       </h2>
       <p className="font-body mt-3 max-w-md text-[15px] leading-7 text-[#d9ccb0]">
-        일곱 유적지에서 되찾은 봉인이 향로로 돌아왔습니다. 봉황이 다시 날개를 펼치고, 향로에서 은은한 향이 피어오릅니다.
+        {SEVEN}유적지에서 되찾은 봉인이 향로로 돌아왔습니다. 봉황이 다시 날개를 펼치고, 향로에서 은은한 향이 피어오릅니다.
       </p>
 
       <div className="mt-10 flex w-full max-w-xl flex-col gap-6">
@@ -2422,7 +2437,7 @@ function EndingScreen({ inventory, completedAt, mistakeCount, hintCount, onOpenN
 
       {/* 되찾은 일곱 봉인 카드 */}
       <section className="mt-10 w-full max-w-2xl">
-        <h3 className="font-display text-xl text-[#f3e7c9] sm:text-2xl">되찾은 일곱 봉인</h3>
+        <h3 className="font-display text-xl text-[#f3e7c9] sm:text-2xl">되찾은 {SEVEN}봉인</h3>
         <ul className="mt-4 flex flex-wrap justify-center gap-3">
           {STAGES.map((s) => {
             const owned = inventory.some((it) => it.stageId === s.id);
@@ -2489,7 +2504,7 @@ function EndingScreen({ inventory, completedAt, mistakeCount, hintCount, onOpenN
             </div>
 
             <p className="font-body mt-5 border-t border-[#b0813a]/40 pt-4 pr-24 text-[13px] leading-6 text-[#4a3820] sm:pr-28 sm:text-sm">
-              위 수사관은 부여 일곱 유적지를 탐방하여 백제금동대향로의 봉인을 모두 되찾았기에, 그 공로를 기려 이 증서를 수여합니다.
+              위 수사관은 부여 {SEVEN}유적지를 탐방하여 백제금동대향로의 봉인을 모두 되찾았기에, 그 공로를 기려 이 증서를 수여합니다.
             </p>
             <p className="font-display mt-3 pr-24 text-sm text-[#3a2a17] sm:pr-28">국립부여박물관 특별수사본부</p>
 
@@ -2903,7 +2918,7 @@ function FinaleButton({ onClick, ready = true }) {
   return (
     <div ref={ref} className="anim-pop relative mt-1 overflow-hidden rounded-3xl border-2 border-[#f6dc94]/70 bg-gradient-to-br from-[#3a2a10] via-[#24190b] to-[#3a2a10] p-5 text-center sm:p-6">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(255,220,140,0.35),transparent_65%)]" />
-      <p className="font-body relative text-xs tracking-[0.3em] text-[#f6dc94]">일곱 봉인 회수 완료</p>
+      <p className="font-body relative text-xs tracking-[0.3em] text-[#f6dc94]">{SEVEN}봉인 회수 완료</p>
       <p className="font-display relative mt-1 text-lg text-[#fbf3de] sm:text-xl">이제 향로로 돌아갈 시간이에요!</p>
       <button
         onClick={onClick}
@@ -2912,6 +2927,30 @@ function FinaleButton({ onClick, ready = true }) {
         <Sparkles className="h-6 w-6 shrink-0 sm:h-7 sm:w-7" />
         향로로 돌아가 의식 완성하기
         <ChevronRight className="nudge-right h-6 w-6 shrink-0 sm:h-7 sm:w-7" />
+      </button>
+    </div>
+  );
+}
+
+/* 부스 모드: 엔딩 화면 아래에 '몇 초 뒤 처음 화면으로' 안내, 시간이 다 되면 처음 화면으로 */
+function BoothReturn({ seconds, onDone }) {
+  const [left, setLeft] = useState(seconds);
+  useEffect(() => {
+    if (left <= 0) {
+      onDone();
+      return undefined;
+    }
+    const t = setTimeout(() => setLeft((n) => n - 1), 1000);
+    return () => clearTimeout(t);
+  }, [left]);
+  return (
+    <div className="font-body fixed inset-x-0 bottom-4 z-40 flex justify-center px-4">
+      <button
+        onClick={onDone}
+        className="inline-flex items-center gap-2 rounded-full border border-[#5a4a32] bg-[#1d1813]/95 px-4 py-2 text-sm text-[#e8dcc0] shadow-lg backdrop-blur transition hover:border-[#e2b85c] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#e2b85c]/60"
+      >
+        <span className="tabular-nums">{left}초 뒤 처음 화면으로 돌아가요</span>
+        <span className="text-[#e2b85c]">· 지금 처음으로</span>
       </button>
     </div>
   );
