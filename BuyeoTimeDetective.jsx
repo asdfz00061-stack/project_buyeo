@@ -3598,7 +3598,7 @@ function QuizPanel({
         </span>
         {attempts > 0 && <span className="text-xs text-[#9c8c6e] tabular-nums">시도 {attempts}회</span>}
       </div>
-      <p className="font-display mt-3 whitespace-pre-line text-lg leading-8 text-[#f6ecd2] sm:text-xl" style={{ textWrap: 'balance' }}>
+      <p className="font-display mt-3 whitespace-pre-line text-lg leading-8 text-[#f6ecd2] sm:text-xl" style={{ textWrap: 'balance', wordBreak: 'keep-all' }}>
         {quiz.question}
       </p>
 
