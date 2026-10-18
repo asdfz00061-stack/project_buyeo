@@ -840,7 +840,7 @@ const STAGES = [
       {
         speaker: '수사관 (나)',
         avatar: null,
-        text: '와, 연못이 반짝반짝해요! 언니, 이 연못 진짜 사람이 만든 거예요?',
+        text: '와, 연못이 반짝반짝해요! 누나, 이 연못 진짜 사람이 만든 거예요?',
       },
       {
         speaker: '궁녀',
@@ -1038,7 +1038,7 @@ const INTRO_NARRATION =
 
 // 공통 대사 (음성 파일을 미리 만들 수 있도록 고정 문장으로 둡니다)
 const FINALE_LINE = '일곱 개의 봉인이 모두 모였습니다! 어서 국립부여박물관의 향로로 돌아가 의식을 완성하십시오!';
-const AWAKEN_LINE = '이 빛은…! 일곱 봉인의 힘이 하나로 모여 몸 안으로 흘러들어 와. 드디어 본래 모습을 되찾았어!';
+const AWAKEN_LINE = '이 빛은…! 일곱 봉인의 힘이 하나로 모여 몸 안으로 흘러들어 와…!'; // 변신 직전 (정령 모습으로 말하고, 변신은 엔딩 연출에서)
 const GUIDE_LINES = {
   학예연구사: '아직 찾지 못한 봉인이 남아 있어요. 지도에서 남은 유적지를 골라 수사를 이어 가 주세요.',
   노승: '아직 거두지 못한 봉인이 남아 있소. 지도를 펼쳐 남은 곳으로 발길을 옮기시게.',
@@ -1209,8 +1209,8 @@ function BuyeoTimeDetective() {
     (s) => !visitedStages.includes(s.id),
   );
   const allCleared = visitedStages.length === TOTAL;
-  // 일곱 봉인을 모두 모은 순간(또는 엔딩)부터 인간형으로 각성
-  const heroMode = allCleared || gameStatus === 'ending' ? 'human' : 'beast';
+  // 엔딩의 변신 연출을 지난 뒤부터 인간형 (그 전엔 봉인을 다 모아도 정령 모습)
+  const heroMode = gameStatus === 'ending' ? 'human' : 'beast';
 
   const resetStageUI = () => {
     setAnswerInput('');

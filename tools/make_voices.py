@@ -146,7 +146,13 @@ JOY_LINES = set()  # (목소리 id, 대사)
 
 # 금동이 각성 대사: 가장 감정이 큰 장면이라 이 대사만 전용 지시 (열네 살 애니 주인공, 큰 억양)
 AWAKEN = (
-    "You are a fourteen-year-old Korean boy, the young hero of a fantasy adventure anime, in the climactic moment of his transformation. Clearly a boy's voice: young, bright, a little husky, energetic and boyish, not an adult man and not a narrator. Act it out with big, dramatic, highly melodic intonation — wide pitch swings up and down, never flat, never like reading a textbook aloud. '이 빛은…!!' : a sharp gasp, voice jumping up high with astonishment. '일곱 봉인의 힘이… 하나로 모여, 몸 안으로 흘러들어 와…!' : breathless and trembling with thrill, the pitch climbing higher and higher as the power fills him. '드디어… 드디어' : a quick, shaky breath of disbelief, then building. '본래 모습을 되찾았어!!!' : explode into a joyful, triumphant shout, laughing with pure happiness. Fast, lively pace with real breaths, like a talented anime voice actor. Natural native Korean pronunciation."
+    "Geumdongi in spirit form: a mischievous, gender-neutral little kid of about five or six with a high, bubbly, babyish voice. "
+    "This is the moment right BEFORE the transformation: all seven seals' golden power is pouring into the tiny spirit's body. "
+    "'이 빛은…!' — a sharp, astonished gasp, voice jumping up high with wonder. "
+    "Then '일곱 봉인의 힘이… 하나로 모여… 몸 안으로 흘러들어 와…!' — breathless, trembling with thrill, pitch climbing higher and higher, "
+    "speeding up with mounting excitement, ending on a held, quivering breath as if something huge is about to happen. "
+    "Huge, vivid emotion like a kids' anime hero about to power up. Never flat, never calm, never an adult or teenage voice. "
+    "Natural native Korean pronunciation, studio-quality dry recording."
 )
 AWAKEN_LINES = set()
 
@@ -158,6 +164,18 @@ STANDARD = (
 
 # 특정 대사에만 덧붙이는 연기 지시 (대사 글 → 추가 지시)
 LINE_EXTRA = {
+    "봉황 깃털이다! 앗, 몸이 살짝 따뜻해졌어. 봉인을 다 모으면 나 어떻게 되는 거지?": (
+        " IMPORTANT for this line: shout '봉황 깃털이다!!' with explosive joy like finding treasure, then a surprised little gasp '앗, 앗!' "
+        "as warmth spreads through the body, and end with a wide-eyed, wondering, slightly nervous-excited question. Big, playful emotion."
+    ),
+    "배 타는 거 처음이에요! 강바람 시원하다~ 근데 물속에 정말 백제 이야기가 흐르고 있어요?": (
+        " IMPORTANT for this line: bursting with delight on the first boat ride — a long, thrilled '우와아' and a happy, breezy, sing-song "
+        "'강바람 시원하다~', then lean in with sparkling curiosity on the question. Bouncy, giggly, full of wonder."
+    ),
+    "시인이 사셨던 곳이구나. 나도 시 한 줄 지어 볼까? …음, 금동이는 반짝반짝 금빛~ 헤헤.": (
+        " IMPORTANT for this line: playful and cheeky — get excited about writing a poem, ponder with a cute '으음…', "
+        "then proudly sing-song the silly little verse '금동이는~ 반짝반짝~ 금빛~!' and burst into a shy, giggly '헤헤헤!'."
+    ),
     "오셨군요, 수사관님. 어젯밤 자정, 백제금동대향로 진열장에서 금빛이 번쩍이더니 향로에 깃든 일곱 개의 봉인이 사라졌습니다.": (
         " IMPORTANT for this line: it is her very first greeting, so make it noticeably brighter and faster. "
         "Open with a cheerful, bubbly, relieved '오셨군요, 수사관님!' with a big smile in the voice, as if she has been anxiously waiting and is so glad he came. "
@@ -199,7 +217,6 @@ def collect_lines(src: str):
     # 주인공 대사는 정령/인간 두 목소리 모두
     for text in hero_lines:
         lines.add(("hero_beast", text))
-        lines.add(("hero_human", text))
 
     # 공통 대사
     def const(name):
@@ -208,8 +225,8 @@ def collect_lines(src: str):
 
     finale, awaken = const("FINALE_LINE"), const("AWAKEN_LINE")
     lines.add(("narrator", const("INTRO_NARRATION")))  # 시작 화면 소개 글
-    lines.add(("hero_human", awaken))
-    AWAKEN_LINES.add(("hero_human", awaken))
+    lines.add(("hero_beast", awaken))
+    AWAKEN_LINES.add(("hero_beast", awaken))
     guide_block = re.search(r"const GUIDE_LINES = \{(.*?)\n\};", src, re.S).group(1)
     for m in re.finditer(r"^\s*'?([^':\n]+?)'?:\s*(?:" + STR + ")", guide_block, re.M):
         speaker = m.group(1).strip()
@@ -223,8 +240,14 @@ def collect_lines(src: str):
 SPOKEN_OVERRIDE = {
     "오셨군요, 수사관님. 어젯밤 자정, 백제금동대향로 진열장에서 금빛이 번쩍이더니 향로에 깃든 일곱 개의 봉인이 사라졌습니다.":
         "오셨군요, 수사관님! 어젯밤 자정, 백제금동대향로 진열장에서 금빛이 번쩍이더니, 향로에 깃든 일곱 개의 봉인이 사라졌습니다!",
-    "이 빛은…! 일곱 봉인의 힘이 하나로 모여 몸 안으로 흘러들어 와. 드디어 본래 모습을 되찾았어!":
-        "이 빛은…!! 일곱 봉인의 힘이… 하나로 모여, 몸 안으로 흘러들어 와…! 드디어… 드디어 본래 모습을 되찾았어!!!",
+    "이 빛은…! 일곱 봉인의 힘이 하나로 모여 몸 안으로 흘러들어 와…!":
+        "이 빛은…!! 일곱 봉인의 힘이… 하나로 모여… 몸 안으로 흘러들어 와…!!",
+    "봉황 깃털이다! 앗, 몸이 살짝 따뜻해졌어. 봉인을 다 모으면 나 어떻게 되는 거지?":
+        "봉황 깃털이다!! 앗, 앗! 몸이 살짝 따뜻해졌어! 봉인을 다 모으면… 나 어떻게 되는 거지?!",
+    "배 타는 거 처음이에요! 강바람 시원하다~ 근데 물속에 정말 백제 이야기가 흐르고 있어요?":
+        "우와아, 배 타는 거 처음이에요!! 강바람 시원하다~! 근데요, 물속에 정말 백제 이야기가 흐르고 있어요?!",
+    "시인이 사셨던 곳이구나. 나도 시 한 줄 지어 볼까? …음, 금동이는 반짝반짝 금빛~ 헤헤.":
+        "와, 시인이 사셨던 곳이구나! 나도 시 한 줄 지어 볼까? 으음… 금동이는~ 반짝반짝~ 금빛~! 헤헤헤!",
 }
 
 
