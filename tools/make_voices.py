@@ -148,6 +148,16 @@ AWAKEN = (
 )
 AWAKEN_LINES = set()
 
+# 특정 대사에만 덧붙이는 연기 지시 (대사 글 → 추가 지시)
+LINE_EXTRA = {
+    "오셨군요, 수사관님. 어젯밤 자정, 백제금동대향로 진열장에서 금빛이 번쩍이더니 향로에 깃든 일곱 개의 봉인이 사라졌습니다.": (
+        " IMPORTANT for this line: it is her very first greeting, so make it noticeably brighter and faster. "
+        "Open with a cheerful, bubbly, relieved '오셨군요, 수사관님!' with a big smile in the voice, as if she has been anxiously waiting and is so glad he came. "
+        "Then tell what happened in a quick, lively, excited rush, like eagerly sharing big news — brisk upbeat pace, rising energetic intonation, "
+        "only a brief hush of wonder on '금빛이 번쩍이더니'. Not stiff, not formal, not slow."
+    ),
+}
+
 
 def collect_lines(src: str):
     """(목소리 id, 대사) 목록"""
@@ -203,6 +213,8 @@ def collect_lines(src: str):
 
 
 SPOKEN_OVERRIDE = {
+    "오셨군요, 수사관님. 어젯밤 자정, 백제금동대향로 진열장에서 금빛이 번쩍이더니 향로에 깃든 일곱 개의 봉인이 사라졌습니다.":
+        "오셨군요, 수사관님! 어젯밤 자정, 백제금동대향로 진열장에서 금빛이 번쩍이더니, 향로에 깃든 일곱 개의 봉인이 사라졌습니다!",
     "이 빛은…! 일곱 봉인의 힘이 하나로 모여 몸 안으로 흘러들어 와. 드디어 본래 모습을 되찾았어!":
         "이 빛은…!! 일곱 봉인의 힘이… 하나로 모여, 몸 안으로 흘러들어 와…! 드디어… 드디어 본래 모습을 되찾았어!!!",
 }
@@ -240,7 +252,8 @@ async def make(vid: str, text: str, path: Path, sem: asyncio.Semaphore) -> bool:
             try:
                 r = await _client.audio.speech.create(
                     model=MODEL, voice=cfg["voice"], input=spoken(text), response_format="wav",
-                    instructions=AWAKEN if (vid, text) in AWAKEN_LINES else cfg["inst"] + (JOY if (vid, text) in JOY_LINES else ""),
+                    instructions=AWAKEN if (vid, text) in AWAKEN_LINES
+                    else cfg["inst"] + (JOY if (vid, text) in JOY_LINES else "") + LINE_EXTRA.get(text, ""),
                 )
                 if not r.content:
                     raise RuntimeError("빈 음성")
