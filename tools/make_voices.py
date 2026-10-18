@@ -154,6 +154,10 @@ JOY = (
 )
 JOY_LINES = set()  # (목소리 id, 대사)
 
+# 각성 장면 두 대사 공통: 국어책 읽듯 밋밋하지 않게, 목소리를 높게
+HIGH = (" Pitch the voice HIGH — noticeably higher than a normal speaking voice — with wild, exaggerated ups and downs like an anime character, "
+        "never a steady reading voice.")
+
 # 금동이 각성 대사: 가장 감정이 큰 장면이라 이 대사만 전용 지시 (열네 살 애니 주인공, 큰 억양)
 AWAKEN = (
     "Geumdongi in spirit form: a mischievous, gender-neutral little kid of about five or six with a high, bubbly, babyish voice. "
@@ -162,7 +166,7 @@ AWAKEN = (
     "Then '일곱 봉인의 힘이… 하나로 모여… 몸 안으로 흘러들어 와…!' — breathless, trembling with thrill, pitch climbing higher and higher, "
     "speeding up with mounting excitement, ending on a held, quivering breath as if something huge is about to happen. "
     "Huge, vivid emotion like a kids' anime hero about to power up. Never flat, never calm, never an adult or teenage voice. "
-    "Natural native Korean pronunciation, studio-quality dry recording."
+    "Natural native Korean pronunciation, studio-quality dry recording." + HIGH
 )
 AWAKEN_LINES = set()
 
@@ -175,7 +179,7 @@ SCENE_LINES = {
         "thrilling shout '으아아아앗!' as the power explodes — like a kids' anime hero powering up. Loud, vivid, never calm. "
         "Natural Korean vocalization, studio-quality dry recording."
     )),
-    "AWAKEN_REVEAL": ("hero_human", "You are Geumdongi, a fourteen-year-old Korean boy, the young hero of a fantasy adventure anime, at the exact moment he finally transforms back into his true form after a long journey. He is OVERJOYED — the happiest moment of his life. Shout it out at full volume with explosive, ecstatic joy: a breathless, trembling '드디어…!', then a huge triumphant cry '드디어 본래 모습을 되찾았어!!!' with the voice soaring high and almost cracking with happiness, then a jubilant '해냈다아!!' and bursting into real, heartfelt laughter '하하하!'. Fast, energetic tempo, big pitch jumps, breathy excitement, grinning ear to ear. Clearly a young teenage boy's voice, bright and boyish. Absolutely never flat, calm, slow, or like reading a textbook. Natural native Korean pronunciation, studio-quality dry recording."),
+    "AWAKEN_REVEAL": ("hero_human", "You are Geumdongi, a fourteen-year-old Korean boy, the young hero of a fantasy adventure anime, at the exact moment he finally transforms back into his true form after a long journey. He is OVERJOYED — the happiest moment of his life. Shout it out at full volume with explosive, ecstatic joy: a breathless, trembling '드디어…!', then a huge triumphant cry '드디어 본래 모습을 되찾았어!!!' with the voice soaring high and almost cracking with happiness, then a jubilant '해냈다아!!' and bursting into real, heartfelt laughter '하하하!'. Fast, energetic tempo, big pitch jumps, breathy excitement, grinning ear to ear. Clearly a young teenage boy's voice, bright and boyish. Absolutely never flat, calm, slow, or like reading a textbook. Natural native Korean pronunciation, studio-quality dry recording." + HIGH),
 }
 SCENE_INST = {}  # 대사 → 지시 (collect_lines 에서 채움)
 
