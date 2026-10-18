@@ -9,6 +9,7 @@ BuyeoTimeDetective.jsx 에서 대사를 읽어 인물별 목소리로 audio/voic
        PC 환경 변수 OPENAI_API_KEY 에 API 키 저장 (setx OPENAI_API_KEY "키")
 실행:  python tools/make_voices.py          (바뀐 것만)
        python tools/make_voices.py --all    (전부 다시 만들기: VOICES 설정을 바꿨을 때)
+       python tools/make_voices.py --only curator,boatman   (그 인물만 다시 만들기)
 """
 
 import asyncio
@@ -37,12 +38,9 @@ VOICES = {
         "아주 천천히, 문장 사이에 긴장감 있는 쉼을 두고, 비밀을 털어놓듯 낮게 말하는 대목을 살린다. "
         "딱딱한 낭독이 아니라 살아 있는 이야기꾼처럼 억양을 크게 살린다."
     )),
-    # 학예연구사: 생기 있고 친근한 젊은 연구원
+    # 학예연구사: 20대 초반, 이제 막 일을 시작한 젊은 연구원
     "curator": dict(voice="coral", inst=(
-        "A friendly, lively young Korean woman of about twenty-seven, a passionate junior curator at the Buyeo National Museum. "
-        "Youthful, clear, sweet and expressive feminine voice with natural warmth. She speaks to the detective with genuine relief and a small smile, "
-        "and tells strange or mysterious things with wide-eyed wonder and a hint of nervous excitement, lowering her voice on the mysterious parts. "
-        "Approachable and charming, like a likable heroine in a cozy mystery game, never stiff, formal, or old-sounding." + _COMMON
+        'A young Korean woman in her early twenties, about twenty-two, a fresh new museum curator who just started her career at the Buyeo National Museum. Distinctly youthful, bright, light and clear feminine voice with a naturally higher register, sounding like a real young woman in her early twenties, never mature, middle-aged, deep or husky. Lively and sincere, a little breathless with excitement and nervousness about the strange incident, warmly relieved to see the detective. Lower her voice slightly with wonder on the mysterious parts. Natural native Korean pronunciation, polished professional voice acting, studio-quality dry recording. No childish squeaking, no robotic narration.'
     )),
     # 노승: 여든 넘은 할아버지 스님
     "monk": dict(voice="ash", inst=(
@@ -62,11 +60,9 @@ VOICES = {
         "breaths add realism. Cinematic professional character acting, not theatrical overacting. Studio-quality dry voice recording. No cartoon "
         "villain voice, no artificial bass distortion, no constant shouting, no robotic monotone."
     )),
-    # 뱃사공: 소박한 일흔 살 뱃사공
-    "boatman": dict(voice="fable", inst=(
-        "A kind, weathered Korean man around seventy, a lifelong boatman rowing a traditional sail boat on the Baengma River. "
-        "Warm, rustic, slightly hoarse and earthy voice with gentle humor and a relaxed, unhurried rhythm, like a village elder telling stories by the river. "
-        "A touch of melancholy when speaking of Baekje's sad history. Friendly, humble countryside warmth, never young or polished." + _COMMON
+    # 뱃사공: 80~90대, 평생 노를 저은 아주 늙은 뱃사공
+    "boatman": dict(voice="ash", inst=(
+        "A very old Korean man in his late eighties or early nineties who has rowed a boat on the Baengma River his whole life. A frail, thin, trembling and heavily weathered elderly voice, hoarse and crackly with age, slightly breathy, as if speaking takes a little effort. Very slow, unhurried pace with pauses to catch his breath, soft countryside warmth and gentle kindness, and quiet sadness about Baekje's history. Must sound unmistakably ancient, like a great-grandfather, absolutely not young, strong, or middle-aged. Natural native Korean pronunciation, realistic character acting, studio-quality dry recording. No cartoonish exaggeration."
     )),
     # 궁녀: 20대 초반의 아름다운 궁녀 (사용자 지시문)
     "court_lady": dict(voice="sage", inst=(
@@ -173,6 +169,7 @@ def collect_lines(src: str):
         return unescape(m.group(1) if m.group(1) is not None else m.group(2))
 
     finale, awaken = const("FINALE_LINE"), const("AWAKEN_LINE")
+    lines.add(("narrator", const("INTRO_NARRATION")))  # 시작 화면 소개 글
     lines.add(("hero_human", awaken))
     guide_block = re.search(r"const GUIDE_LINES = \{(.*?)\n\};", src, re.S).group(1)
     for m in re.finditer(r"^\s*'?([^':\n]+?)'?:\s*(?:" + STR + ")", guide_block, re.M):
@@ -229,11 +226,15 @@ async def make(vid: str, text: str, path: Path, sem: asyncio.Semaphore) -> bool:
 
 async def main():
     redo_all = "--all" in sys.argv
+    # --only curator,boatman : 그 인물들만 다시 만들기 (다른 인물 음성은 그대로)
+    only = set()
+    if "--only" in sys.argv:
+        only = set(sys.argv[sys.argv.index("--only") + 1].split(","))
     OUT.mkdir(parents=True, exist_ok=True)
     lines = collect_lines(SOURCE.read_text(encoding="utf-8"))
     wanted = {OUT / f"{vid}-{text_hash(text)}.mp3": (vid, text) for vid, text in lines}
 
-    todo = [(p, v, t) for p, (v, t) in wanted.items() if redo_all or not p.exists() or p.stat().st_size == 0]
+    todo = [(p, v, t) for p, (v, t) in wanted.items() if redo_all or v in only or not p.exists() or p.stat().st_size == 0]
     print(f"대사 {len(wanted)}개 · 새로 만들 것 {len(todo)}개")
     sem = asyncio.Semaphore(4)
     results = await asyncio.gather(*(make(v, t, p, sem) for p, v, t in todo))

@@ -171,18 +171,18 @@ const mouthOf = (src) => (src ? MOUTH[String(src).split('/').pop()] || null : nu
 // 실제 목소리 설정(성우·빠르기·높낮이)은 tools/make_voices.py 의 VOICES 에 있습니다.
 // pitch·rate 는 음성 파일이 없을 때 쓰는 브라우저 내장 음성용 예비 값입니다.
 const VOICE = {
-  [NARRATOR]: { id: 'narrator', pitch: 1, rate: 0.95 },
-  학예연구사: { id: 'curator', pitch: 1.2, rate: 1.03 },
-  노승: { id: 'monk', pitch: 0.7, rate: 0.85 },
-  '백제 수문장': { id: 'gatekeeper', pitch: 0.6, rate: 0.95 },
-  뱃사공: { id: 'boatman', pitch: 0.8, rate: 0.9 },
-  궁녀: { id: 'court_lady', pitch: 1.35, rate: 1 },
-  능지기: { id: 'tomb_keeper', pitch: 0.65, rate: 0.85 },
-  해설사: { id: 'docent', pitch: 0.95, rate: 1 },
+  [NARRATOR]: { id: 'narrator', pitch: 1, rate: 0.95, playbackRate: 1.2 }, // 음성 파일을 1.2배 빠르게 재생
+  학예연구사: { id: 'curator', pitch: 1.2, rate: 1.03, playbackRate: 1.15 },
+  노승: { id: 'monk', pitch: 0.7, rate: 0.85, playbackRate: 1.15 },
+  '백제 수문장': { id: 'gatekeeper', pitch: 0.6, rate: 0.95, playbackRate: 1.15 },
+  뱃사공: { id: 'boatman', pitch: 0.8, rate: 0.9, playbackRate: 1.15 },
+  궁녀: { id: 'court_lady', pitch: 1.35, rate: 1, playbackRate: 1.15 },
+  능지기: { id: 'tomb_keeper', pitch: 0.65, rate: 0.85, playbackRate: 1.15 },
+  해설사: { id: 'docent', pitch: 0.95, rate: 1, playbackRate: 1.15 },
 };
 const HERO_VOICE = {
-  beast: { id: 'hero_beast', pitch: 1.6, rate: 1.08 },
-  human: { id: 'hero_human', pitch: 1.1, rate: 1.02 },
+  beast: { id: 'hero_beast', pitch: 1.6, rate: 1.08, playbackRate: 1.1 },
+  human: { id: 'hero_human', pitch: 1.1, rate: 1.02, playbackRate: 1.1 },
 };
 
 // 대사 → 음성 파일 경로 (tools/make_voices.py 와 같은 FNV-1a 해시)
@@ -363,7 +363,8 @@ const VoicePlayer = (() => {
       }
     },
     // 재생 시작 시 onStart, 끝나면 onEnd. 파일을 못 불러오면 fallback(브라우저 음성) 실행
-    play(src, { onStart, onEnd, fallback } = {}) {
+    // rate: 재생 속도(음 높이 유지), onBlocked: 브라우저가 자동 재생을 막았을 때
+    play(src, { onStart, onEnd, fallback, rate = 1, onBlocked } = {}) {
       if (!audio) {
         if (fallback) fallback();
         return;
@@ -379,6 +380,10 @@ const VoicePlayer = (() => {
         if (fallback) fallback();
       });
       audio.src = src;
+      audio.preservesPitch = true;
+      audio.webkitPreservesPitch = true;
+      audio.defaultPlaybackRate = rate;
+      audio.playbackRate = rate;
       if (analyser) Sound.context(); // 멈춰 있던 오디오 컨텍스트 깨우기
       const p = audio.play();
       if (p && p.catch) {
@@ -386,6 +391,7 @@ const VoicePlayer = (() => {
           mine((err) => {
             // 자동 재생이 막힌 경우(NotAllowedError)는 조용히 넘어가고, 그 외에는 내장 음성으로
             if (onEnd) onEnd();
+            if (err && err.name === 'NotAllowedError' && onBlocked) onBlocked();
             if (err && err.name !== 'NotAllowedError' && err.name !== 'AbortError' && fallback) fallback();
           }),
         );
@@ -924,6 +930,10 @@ const TOTAL = STAGES.length;
 // 클리어 대화 구성: 장소는 순서와 상관없이 풀 수 있으므로
 // - next 가 붙은 '다음 장소 안내' 대사는 그 장소가 아직 남아 있을 때만 보여 주고
 // - 마지막으로 봉인을 모은 장소에서는 어디든 완성 대사가 이어집니다.
+// 시작 화면에서 나레이션이 읽어 주는 소개 글 (화면에 보이는 글과 같은 내용)
+const INTRO_NARRATION =
+  '국립부여박물관의 백제금동대향로에 깃든 일곱 봉인이 풀려 부여의 유적지로 흩어졌습니다. 특별 수사관인 당신은 각 장소를 탐방하고 단서를 풀어 봉인을 되찾아야 합니다. 막히는 곳이 있으면 다른 유적지부터 먼저 조사해도 괜찮습니다.';
+
 // 공통 대사 (음성 파일을 미리 만들 수 있도록 고정 문장으로 둡니다)
 const FINALE_LINE = '일곱 개의 봉인이 모두 모였습니다! 어서 국립부여박물관의 향로로 돌아가 의식을 완성하십시오!';
 const AWAKEN_LINE = '이 빛은…! 일곱 봉인의 힘이 하나로 모여 몸 안으로 흘러들어 와. 드디어 본래 모습을 되찾았어!';
@@ -1269,6 +1279,7 @@ function BuyeoTimeDetective() {
   // ======================= 화면: 인트로 =======================
   if (gameStatus === 'intro') {
     return (
+      <IntroNarration voiceOn={voiceOn}>
       <Shell>
         <div className="flex min-h-screen items-center justify-center px-4 py-10">
           <div className="anim-pop w-full max-w-xl text-center">
@@ -1330,6 +1341,7 @@ function BuyeoTimeDetective() {
           </div>
         </div>
       </Shell>
+      </IntroNarration>
     );
   }
 
@@ -2727,6 +2739,65 @@ function AwakeningCard({ onReplay }) {
   );
 }
 
+/* 시작 화면 나레이션: 화면이 열리면 소개 글을 읽어 줌.
+ * 브라우저가 첫 터치 전 소리를 막으면, 버튼이 아닌 곳을 처음 누를 때 읽기 시작. 오른쪽 위에서 다시 듣기 가능. */
+function IntroNarration({ voiceOn, children }) {
+  const [playing, setPlaying] = useState(false);
+  const [blocked, setBlocked] = useState(false);
+  const profile = VOICE[NARRATOR];
+
+  const play = () => {
+    setBlocked(false);
+    VoicePlayer.play(voiceFile(profile.id, INTRO_NARRATION), {
+      rate: profile.playbackRate || 1,
+      onStart: () => setPlaying(true),
+      onEnd: () => setPlaying(false),
+      onBlocked: () => setBlocked(true),
+    });
+  };
+
+  useEffect(() => {
+    if (!voiceOn) return undefined;
+    const t = setTimeout(play, 600); // 화면이 뜬 뒤 살짝 쉬었다가
+    return () => {
+      clearTimeout(t);
+      VoicePlayer.stop();
+    };
+  }, [voiceOn]);
+
+  // 자동 재생이 막혔으면: 버튼이 아닌 곳을 처음 누를 때 읽기 시작
+  useEffect(() => {
+    if (!blocked || !voiceOn) return undefined;
+    const onTap = (e) => {
+      if (e.target.closest && e.target.closest('button')) return;
+      Sound.unlock();
+      play();
+    };
+    document.addEventListener('pointerdown', onTap, { once: true });
+    return () => document.removeEventListener('pointerdown', onTap);
+  }, [blocked, voiceOn]);
+
+  return (
+    <>
+      {children}
+      {voiceOn && (
+        <button
+          onClick={() => {
+            Sound.unlock();
+            if (playing) VoicePlayer.stop();
+            else play();
+            if (playing) setPlaying(false);
+          }}
+          className="font-body fixed right-4 top-4 z-40 inline-flex items-center gap-1.5 rounded-full border border-[#5a4a32] bg-[#1d1813]/90 px-3.5 py-2 text-xs text-[#e8dcc0] backdrop-blur transition hover:border-[#e2b85c] hover:text-[#f6ecd2] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#e2b85c]/60"
+        >
+          <SpeechIcon className="h-4 w-4 text-[#e2b85c]" />
+          {playing ? '나레이션 멈추기' : blocked ? '화면을 누르면 이야기가 시작돼요' : '이야기 다시 듣기'}
+        </button>
+      )}
+    </>
+  );
+}
+
 /* 엔딩: 금동이 변신 전체 화면 연출 (약 6초)
  * 정령 등장 → 기운이 모이며 빛 고리·빛살·빛 알갱이가 빨려 듦 → 번쩍 → 인간 수사관으로 각성, 불꽃이 터짐 → 제목 */
 function AwakeningOverlay({ sfxOn, onDone }) {
@@ -2953,20 +3024,21 @@ function DialogueBox({
   const voiceId = voiceProfile?.id;
   const pitch = voiceProfile?.pitch ?? 1;
   const rate = voiceProfile?.rate ?? 1;
+  const playbackRate = voiceProfile?.playbackRate ?? 1;
 
   // 음성 읽기: 인물별로 미리 만든 음성 파일을 재생 (없으면 브라우저 내장 음성), 넘기면 바로 멈춤
   useEffect(() => {
     if (!voiceOn) return undefined;
     const onStart = () => setSpeaking(true);
     const onEnd = () => setSpeaking(false);
-    const fallback = () => Speech.speak(text, { pitch, rate }, onStart, onEnd);
-    if (voiceId) VoicePlayer.play(voiceFile(voiceId, text), { onStart, onEnd, fallback });
+    const fallback = () => Speech.speak(text, { pitch, rate: rate * playbackRate }, onStart, onEnd);
+    if (voiceId) VoicePlayer.play(voiceFile(voiceId, text), { onStart, onEnd, fallback, rate: playbackRate });
     else fallback();
     return () => {
       VoicePlayer.stop();
       setSpeaking(false);
     };
-  }, [text, voiceOn, voiceId, pitch, rate]);
+  }, [text, voiceOn, voiceId, pitch, rate, playbackRate]);
 
   // 음성이 꺼져 있으면 글자가 찍힐 때 '톡톡' 타자 소리 (인물 목소리 높낮이 반영)
   useEffect(() => {

@@ -3,7 +3,7 @@
  * - 버전이 고정된 라이브러리·음성·사진은 한 번 받으면 저장해 두고 재사용 (유적지에서 신호가 약해도 동작)
  * 파일 구성을 크게 바꾸면 CACHE 이름의 숫자를 올려 주세요.
  */
-const CACHE = 'buyeo-detective-v2'; // v2: 대사 음성을 OpenAI 목소리로 교체
+const CACHE = 'buyeo-detective-v3'; // v3: 학예연구사·뱃사공 목소리 교체, 시작 화면 나레이션
 const CORE = [
   './',
   './manifest.webmanifest',
