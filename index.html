@@ -1312,7 +1312,9 @@ function BuyeoTimeDetective() {
       <IntroNarration voiceOn={voiceOn}>
       <Shell>
         <div className="flex min-h-screen items-center justify-center px-4 py-10">
-          <div className="anim-pop w-full max-w-xl text-center">
+          <div className="anim-pop relative w-full max-w-xl text-center">
+            {/* 향로에서 일곱 봉인이 튀어나와 각 유적지로 흩어지는 연출 */}
+            <SealScatter />
             {/* 금동대향로: 위쪽은 연기가 피어오르는 여백 */}
             <div className="relative mx-auto -mt-6 mb-3 h-[23rem] w-[12rem] sm:h-[28rem] sm:w-[14rem]">
               <CenserIllustration className="h-full w-full" />
@@ -1332,7 +1334,7 @@ function BuyeoTimeDetective() {
                 {STAGES.map((s) => {
                   const I = THEME[s.id].icon;
                   return (
-                    <li key={s.id} className="flex items-center gap-2">
+                    <li key={s.id} data-seal-target={s.id} className="seal-target -mx-1.5 flex items-center gap-2 rounded-lg px-1.5 py-0.5">
                       <I className="h-4 w-4 shrink-0" style={{ color: THEME[s.id].accent }} />
                       <span className="truncate">{s.name}</span>
                     </li>
@@ -1858,6 +1860,24 @@ function Shell({ children }) {
           background: linear-gradient(105deg, transparent 38%, rgba(255, 236, 170, .55) 50%, transparent 62%) no-repeat;
           background-size: 250% 100%; mix-blend-mode: screen; animation: censerSheen 6.5s ease-in-out infinite;
         }
+
+        /* 시작 화면: 흩어지는 일곱 봉인 */
+        .seal-orb {
+          background: radial-gradient(circle, #fff3c4 0 28%, var(--c) 72%);
+          box-shadow: 0 0 10px 3px var(--c), 0 0 26px 8px rgba(255, 220, 140, .45);
+          will-change: transform, opacity;
+        }
+        @keyframes censerBurst {
+          0% { filter: brightness(1); }
+          22% { filter: brightness(1.9) drop-shadow(0 0 28px rgba(255, 224, 150, .95)); }
+          100% { filter: brightness(1); }
+        }
+        .censer-burst { animation: censerBurst 1.8s ease-out; }
+        @keyframes sealLand {
+          0% { background: rgba(226, 184, 92, .45); box-shadow: 0 0 18px rgba(226, 184, 92, .65); color: #fff3c4; }
+          100% { background: transparent; box-shadow: none; }
+        }
+        .seal-landed { animation: sealLand 1.8s ease-out; }
 
         /* 말하는 입 뻐끔뻐끔 + 살짝 끄덕임 */
         .talk-mouth {
@@ -2788,6 +2808,92 @@ function AwakeningCard({ onReplay }) {
         </div>
       </div>
     </section>
+  );
+}
+
+/* 시작 화면: 향로가 번쩍이며 일곱 봉인이 튀어나와 포물선을 그리며 각 유적지 이름으로 날아가 앉음 */
+function SealScatter() {
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const layer = ref.current;
+    const host = layer && layer.parentElement;
+    if (!host) return undefined;
+    let cancelled = false;
+    const anims = [];
+    const timers = [];
+
+    const run = () => {
+      if (cancelled) return;
+      const hr = host.getBoundingClientRect();
+      const censer = host.querySelector('[aria-label="백제금동대향로"]');
+      if (!censer) return;
+      const cr = censer.getBoundingClientRect();
+      // 출발점: 향로 뚜껑 꼭대기 근처
+      const sx = cr.left + cr.width / 2 - hr.left;
+      const sy = cr.top + cr.height * 0.36 - hr.top;
+      censer.classList.add('censer-burst');
+      timers.push(setTimeout(() => censer.classList.remove('censer-burst'), 1800));
+
+      STAGES.forEach((stage, i) => {
+        const target = host.querySelector(`[data-seal-target="${stage.id}"]`);
+        const orb = layer.children[i];
+        if (!target || !orb) return;
+        const icon = target.querySelector('svg') || target;
+        const tr = icon.getBoundingClientRect();
+        const ex = tr.left + tr.width / 2 - hr.left;
+        const ey = tr.top + tr.height / 2 - hr.top;
+        // 포물선: 위로 크게 솟았다가 양옆으로 퍼지며 내려앉음
+        const side = i - (STAGES.length - 1) / 2;
+        const cx = sx + side * 95;
+        const cy = sy - 170 - Math.abs(side) * 18;
+        const frames = [];
+        const N = 12;
+        for (let k = 0; k <= N; k += 1) {
+          const t = k / N;
+          const x = (1 - t) ** 2 * sx + 2 * (1 - t) * t * cx + t * t * ex;
+          const y = (1 - t) ** 2 * sy + 2 * (1 - t) * t * cy + t * t * ey;
+          const sc = k === 0 ? 0.2 : k === N ? 0.75 : 1 + 0.15 * Math.sin(Math.PI * t);
+          frames.push({ transform: `translate(${x}px, ${y}px) translate(-50%, -50%) scale(${sc})`, opacity: k === 0 ? 0 : 1 });
+        }
+        const fly = orb.animate(frames, { duration: 1800, delay: 350 + i * 160, easing: 'cubic-bezier(.4,.05,.25,1)', fill: 'both' });
+        anims.push(fly);
+        fly.onfinish = () => {
+          if (cancelled) return;
+          target.classList.add('seal-landed');
+          const end = `translate(${ex}px, ${ey}px) translate(-50%, -50%)`;
+          anims.push(orb.animate([{ transform: `${end} scale(.75)`, opacity: 1 }, { transform: `${end} scale(2.2)`, opacity: 0 }], { duration: 600, easing: 'ease-out', fill: 'forwards' }));
+          timers.push(setTimeout(() => target.classList.remove('seal-landed'), 1800));
+        };
+      });
+    };
+
+    // 글꼴·레이아웃이 자리 잡은 뒤 시작
+    const start = () => timers.push(setTimeout(run, 700));
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(start);
+    else start();
+    return () => {
+      cancelled = true;
+      timers.forEach(clearTimeout);
+      anims.forEach((a) => a.cancel());
+    };
+  }, []);
+
+  return (
+    <div ref={ref} className="pointer-events-none absolute inset-0 z-20" aria-hidden="true">
+      {STAGES.map((stage) => {
+        const I = THEME[stage.id].icon;
+        return (
+          <span
+            key={stage.id}
+            className="seal-orb absolute left-0 top-0 flex h-7 w-7 items-center justify-center rounded-full"
+            style={{ opacity: 0, '--c': THEME[stage.id].accent }}
+          >
+            <I className="h-4 w-4 text-[#fff8e0]" strokeWidth={2.2} />
+          </span>
+        );
+      })}
+    </div>
   );
 }
 
