@@ -305,7 +305,8 @@ def age_voice(y, sr):
     return np.clip(y / (np.max(np.abs(y)) + 1e-9) * 0.92, -1, 1)
 
 
-AGED = {"boatman"}  # 목소리에 노화 처리를 하는 인물
+AGED = set()  # 목소리에 노화 처리를 하는 인물 (가공하면 기계음처럼 들려서 지금은 쓰지 않음)
+MANUAL = {"boatman"}  # 타입캐스트로 직접 녹음한 인물 (자동 생성 안 함)
 
 
 def encode_mp3(wav_bytes: bytes, path: Path, vid: str = "") -> None:
@@ -358,7 +359,12 @@ async def main():
     lines = collect_lines(SOURCE.read_text(encoding="utf-8"))
     wanted = {OUT / f"{vid}-{text_hash(text)}.mp3": (vid, text) for vid, text in lines}
 
-    todo = [(p, v, t) for p, (v, t) in wanted.items() if redo_all or v in only or not p.exists() or p.stat().st_size == 0]
+    # 직접 녹음(타입캐스트)한 인물은 --all/--only 로도 덮어쓰지 않음 (파일이 없을 때만 알려 줌)
+    for p, (v, t) in wanted.items():
+        if v in MANUAL and not p.exists():
+            print(f"  ! 직접 녹음이 필요한 대사 ({v}): {t}")
+    todo = [(p, v, t) for p, (v, t) in wanted.items()
+            if v not in MANUAL and (redo_all or v in only or not p.exists() or p.stat().st_size == 0)]
     print(f"대사 {len(wanted)}개 · 새로 만들 것 {len(todo)}개")
     sem = asyncio.Semaphore(4)
     results = await asyncio.gather(*(make(v, t, p, sem) for p, v, t in todo))
