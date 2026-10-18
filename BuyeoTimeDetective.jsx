@@ -129,7 +129,7 @@ const VOICE = {
 };
 const HERO_VOICE = {
   beast: { id: 'hero_beast', pitch: 1.6, rate: 1.08, playbackRate: 1.1 },
-  human: { id: 'hero_human', pitch: 1.1, rate: 1.02, playbackRate: 1.1 },
+  human: { id: 'hero_human', pitch: 1.1, rate: 1.02, playbackRate: 1.3 }, // 각성 장면은 빠르게 해야 벅찬 감정이 살아남
 };
 
 // 대사 → 음성 파일 경로 (tools/make_voices.py 와 같은 FNV-1a 해시)

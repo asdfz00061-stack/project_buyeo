@@ -142,6 +142,12 @@ JOY = (
 )
 JOY_LINES = set()  # (목소리 id, 대사)
 
+# 금동이 각성 대사: 가장 감정이 큰 장면이라 이 대사만 전용 지시 (열네 살 애니 주인공, 큰 억양)
+AWAKEN = (
+    "You are a fourteen-year-old Korean boy, the young hero of a fantasy adventure anime, in the climactic moment of his transformation. Clearly a boy's voice: young, bright, a little husky, energetic and boyish, not an adult man and not a narrator. Act it out with big, dramatic, highly melodic intonation — wide pitch swings up and down, never flat, never like reading a textbook aloud. '이 빛은…!!' : a sharp gasp, voice jumping up high with astonishment. '일곱 봉인의 힘이… 하나로 모여, 몸 안으로 흘러들어 와…!' : breathless and trembling with thrill, the pitch climbing higher and higher as the power fills him. '드디어… 드디어' : a quick, shaky breath of disbelief, then building. '본래 모습을 되찾았어!!!' : explode into a joyful, triumphant shout, laughing with pure happiness. Fast, lively pace with real breaths, like a talented anime voice actor. Natural native Korean pronunciation."
+)
+AWAKEN_LINES = set()
+
 
 def collect_lines(src: str):
     """(목소리 id, 대사) 목록"""
@@ -185,6 +191,7 @@ def collect_lines(src: str):
     finale, awaken = const("FINALE_LINE"), const("AWAKEN_LINE")
     lines.add(("narrator", const("INTRO_NARRATION")))  # 시작 화면 소개 글
     lines.add(("hero_human", awaken))
+    AWAKEN_LINES.add(("hero_human", awaken))
     guide_block = re.search(r"const GUIDE_LINES = \{(.*?)\n\};", src, re.S).group(1)
     for m in re.finditer(r"^\s*'?([^':\n]+?)'?:\s*(?:" + STR + ")", guide_block, re.M):
         speaker = m.group(1).strip()
@@ -195,7 +202,14 @@ def collect_lines(src: str):
     return sorted(lines)
 
 
+SPOKEN_OVERRIDE = {
+    "이 빛은…! 일곱 봉인의 힘이 하나로 모여 몸 안으로 흘러들어 와. 드디어 본래 모습을 되찾았어!":
+        "이 빛은…!! 일곱 봉인의 힘이… 하나로 모여, 몸 안으로 흘러들어 와…! 드디어… 드디어 본래 모습을 되찾았어!!!",
+}
+
+
 def spoken(text: str) -> str:
+    text = SPOKEN_OVERRIDE.get(text, text)
     for pat, rep in SAY:
         text = pat.sub(rep, text)
     return text
@@ -226,7 +240,7 @@ async def make(vid: str, text: str, path: Path, sem: asyncio.Semaphore) -> bool:
             try:
                 r = await _client.audio.speech.create(
                     model=MODEL, voice=cfg["voice"], input=spoken(text), response_format="wav",
-                    instructions=cfg["inst"] + (JOY if (vid, text) in JOY_LINES else ""),
+                    instructions=AWAKEN if (vid, text) in AWAKEN_LINES else cfg["inst"] + (JOY if (vid, text) in JOY_LINES else ""),
                 )
                 if not r.content:
                     raise RuntimeError("빈 음성")
