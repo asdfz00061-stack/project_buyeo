@@ -4,7 +4,9 @@ BuyeoTimeDetective.jsx 에서 대사를 읽어 인물별 목소리로 audio/voic
 대사를 고치거나 추가한 뒤 이 스크립트를 다시 실행하면 바뀐 대사만 새로 만들고,
 더 이상 쓰지 않는 음성 파일은 지웁니다.
 
-준비:  python -m pip install edge-tts
+음성: OpenAI gpt-4o-mini-tts (인물별 목소리 + 연기 지시문, 유료 API · 59줄 전체 약 0.15달러)
+준비:  python -m pip install openai soundfile
+       PC 환경 변수 OPENAI_API_KEY 에 API 키 저장 (setx OPENAI_API_KEY "키")
 실행:  python tools/make_voices.py          (바뀐 것만)
        python tools/make_voices.py --all    (전부 다시 만들기: VOICES 설정을 바꿨을 때)
 """
@@ -14,25 +16,94 @@ import re
 import sys
 from pathlib import Path
 
-import edge_tts
+from openai import AsyncOpenAI
 
 ROOT = Path(__file__).resolve().parent.parent
 SOURCE = ROOT / "BuyeoTimeDetective.jsx"
 OUT = ROOT / "audio" / "voice"
 
-# 인물별 목소리. voice = Microsoft 신경망 음성, rate/volume = %, pitch = Hz
-# 한국어 음성은 SunHi(여), InJoon(남), Hyunsu(남) 세 가지라 빠르기·높낮이로 인물을 구분합니다.
+# 인물별 목소리 (OpenAI gpt-4o-mini-tts). voice = 기본 목소리, inst = 연기 지시문
+# 목소리·지시문을 바꾼 뒤에는  python tools/make_voices.py --all  로 전부 다시 만듭니다.
+MODEL = "gpt-4o-mini-tts"
+_COMMON = (
+    " Deliver the Korean dialogue with natural native pronunciation and polished, professional character acting. "
+    "Studio-quality dry voice recording. No robotic narration, no theatrical overacting."
+)
 VOICES = {
-    "narrator": dict(voice="ko-KR-SunHiNeural", rate="-12%", pitch="-6Hz", volume="+0%"),       # 차분한 해설
-    "curator": dict(voice="ko-KR-SunHiNeural", rate="+6%", pitch="+4Hz", volume="+0%"),         # 또렷하고 밝은 연구사
-    "court_lady": dict(voice="ko-KR-SunHiNeural", rate="-14%", pitch="+10Hz", volume="-5%"),    # 부드럽고 단아한 궁녀
-    "monk": dict(voice="ko-KR-InJoonNeural", rate="-24%", pitch="-20Hz", volume="-5%"),         # 느리고 낮은 노승
-    "gatekeeper": dict(voice="ko-KR-HyunsuMultilingualNeural", rate="+4%", pitch="-12Hz", volume="+20%"),  # 굵고 힘찬 수문장
-    "boatman": dict(voice="ko-KR-InJoonNeural", rate="-12%", pitch="-8Hz", volume="+0%"),       # 느긋한 뱃사공
-    "tomb_keeper": dict(voice="ko-KR-HyunsuMultilingualNeural", rate="-20%", pitch="-24Hz", volume="-5%"),  # 낮고 무거운 능지기
-    "docent": dict(voice="ko-KR-InJoonNeural", rate="+0%", pitch="+4Hz", volume="+0%"),         # 친절한 해설사
-    "hero_beast": dict(voice="ko-KR-SunHiNeural", rate="+12%", pitch="+45Hz", volume="+0%"),    # 높고 귀여운 정령 금동이
-    "hero_human": dict(voice="ko-KR-HyunsuMultilingualNeural", rate="+8%", pitch="+10Hz", volume="+0%"),  # 씩씩한 소년 수사관
+    # 나레이션: 할머니가 들려주는 옛날이야기
+    "narrator": dict(voice="coral", inst=(
+        "일흔이 넘은 다정한 할머니가 화롯가에서 손주에게 옛날이야기를 들려주는 목소리. "
+        "따뜻하고 나지막하게, 속삭이듯 신비로운 분위기로 듣는 사람을 이야기 속으로 끌어들인다. "
+        "아주 천천히, 문장 사이에 긴장감 있는 쉼을 두고, 비밀을 털어놓듯 낮게 말하는 대목을 살린다. "
+        "딱딱한 낭독이 아니라 살아 있는 이야기꾼처럼 억양을 크게 살린다."
+    )),
+    # 학예연구사: 생기 있고 친근한 젊은 연구원
+    "curator": dict(voice="coral", inst=(
+        "A friendly, lively young Korean woman of about twenty-seven, a passionate junior curator at the Buyeo National Museum. "
+        "Youthful, clear, sweet and expressive feminine voice with natural warmth. She speaks to the detective with genuine relief and a small smile, "
+        "and tells strange or mysterious things with wide-eyed wonder and a hint of nervous excitement, lowering her voice on the mysterious parts. "
+        "Approachable and charming, like a likable heroine in a cozy mystery game, never stiff, formal, or old-sounding." + _COMMON
+    )),
+    # 노승: 여든 넘은 할아버지 스님
+    "monk": dict(voice="ash", inst=(
+        "여든이 넘은 아주 늙은 할아버지 스님. 쉬고 갈라진 목소리, 숨이 섞인 거친 목소리로 떨리듯 말한다. "
+        "젊은 느낌이 전혀 없어야 한다. 매우 느리고 힘없이, 그러나 자비롭게. "
+        "'나무아미타불'은 길게 읊조리고, 말끝을 늘어뜨리며 중간중간 숨을 고른다."
+    )),
+    # 백제 수문장: 거친 장수 (사용자 지시문)
+    "gatekeeper": dict(voice="ash", inst=(
+        "A powerful, deep, rugged Korean male voice, approximately 40 years old, performed by an elite professional Korean voice actor "
+        "specializing in historical war dramas and AAA fantasy video games. He portrays a battle-hardened royal palace gatekeeper of the ancient "
+        "Baekje Kingdom. His voice is extremely masculine, low-pitched, gravelly, weathered, and commanding, with a thick chest resonance and a "
+        "naturally rough, slightly raspy texture. Every word carries the weight of a seasoned warrior who has survived countless battles. Strong "
+        "diaphragmatic projection, firm consonants, deliberate pacing, and authoritative vocal control. His delivery is stern, intimidating, "
+        "disciplined, and deeply dignified. He speaks in powerful, formal historical Korean with authentic native pronunciation. Controlled "
+        "aggression and restrained intensity, with occasional explosive force when issuing commands. Natural human vocal imperfections and subtle "
+        "breaths add realism. Cinematic professional character acting, not theatrical overacting. Studio-quality dry voice recording. No cartoon "
+        "villain voice, no artificial bass distortion, no constant shouting, no robotic monotone."
+    )),
+    # 뱃사공: 소박한 일흔 살 뱃사공
+    "boatman": dict(voice="fable", inst=(
+        "A kind, weathered Korean man around seventy, a lifelong boatman rowing a traditional sail boat on the Baengma River. "
+        "Warm, rustic, slightly hoarse and earthy voice with gentle humor and a relaxed, unhurried rhythm, like a village elder telling stories by the river. "
+        "A touch of melancholy when speaking of Baekje's sad history. Friendly, humble countryside warmth, never young or polished." + _COMMON
+    )),
+    # 궁녀: 20대 초반의 아름다운 궁녀 (사용자 지시문)
+    "court_lady": dict(voice="sage", inst=(
+        "Perform as a young adult Korean woman in her early twenties, a graceful royal court lady of ancient Baekje. Use a distinctly feminine, "
+        "youthful, light, clear and sweet-sounding voice with a naturally higher vocal register. The voice must sound like a professionally trained "
+        "young Korean female voice actress, never masculine, deep, husky, or androgynous. Speak with delicate articulation, bright resonance, elegant "
+        "phrasing, and gentle warmth. Maintain a soft, melodious, youthful feminine quality throughout every sentence. Deliver the Korean dialogue "
+        "with natural native pronunciation and subtle historical-drama elegance. Sound poised, refined, charming and welcoming, with a gentle smile "
+        "in the voice. Avoid childish squeaking, exaggerated cuteness, breathy whispering, robotic narration, and theatrical overacting."
+    )),
+    # 능지기: 엄숙하고 신비로운 무덤지기
+    "tomb_keeper": dict(voice="onyx", inst=(
+        "An old, solemn Korean tomb keeper in his late sixties who has guarded the royal tombs of Baekje for decades. "
+        "Low, deep, quiet and grave voice with a mysterious, reverent atmosphere, speaking slowly as if not to disturb the sleeping kings. "
+        "Slightly rough, aged texture, measured pauses, dignified and a little eerie, like the guardian of an ancient secret." + _COMMON
+    )),
+    # 해설사: 시를 낭송하듯 부드러운 해설사
+    "docent": dict(voice="echo", inst=(
+        "A gentle, cultured Korean man in his thirties, a literature docent at the Shin Dong-yeop Literary Museum. "
+        "Soft, warm, sincere and slightly poetic voice, speaking with quiet passion and deep respect for the poet, as if reciting poetry. "
+        "Calm, kind and thoughtful pacing with expressive emotional warmth." + _COMMON
+    )),
+    # 금동이(정령): 변성기 전 장난꾸러기 소년
+    "hero_beast": dict(voice="alloy", inst=(
+        "Geumdongi in spirit form, played as a mischievous, cheeky little Korean boy of about nine or ten, before his voice has broken. "
+        "A clear, bright, naturally high-pitched pre-adolescent boy's voice, energetic and playful, like a real elementary school boy who loves adventures. "
+        "Speak with a grin in the voice, a little cocky and full of curiosity, quick and bouncy rhythm, with a playful 'aha!' feeling when discovering a clue. "
+        "When reading a quoted inscription, switch to a dramatic, mysterious whisper as if playing detective. "
+        "It must sound like a boy, not a girl and not a grown woman; no babyish talk, no squeaking, no cartoon exaggeration. "
+        "Natural native Korean pronunciation, studio-quality dry recording."
+    )),
+    # 금동이(각성): 환희에 찬 열일곱 살 소년 수사관
+    "hero_human": dict(voice="verse", inst=(
+        "Geumdongi after awakening into his true form: a confident, heroic Korean teenage boy of about seventeen in golden armor. "
+        "Bright, clear, youthful male voice full of wonder and rising excitement, building to a triumphant, joyful climax. "
+        "Like the protagonist in a fantasy adventure game." + _COMMON
+    )),
 }
 
 # 게임 속 이름 → 목소리 id (BuyeoTimeDetective.jsx 의 VOICE 와 같아야 합니다)
@@ -119,23 +190,39 @@ def spoken(text: str) -> str:
     return text
 
 
+_client = None
+
+
+def encode_mp3(wav_bytes: bytes, path: Path) -> None:
+    """말소리용으로 가볍게 저장 (모노 56kbps · 태블릿에서 빨리 받도록)"""
+    import io
+
+    import soundfile as sf
+
+    y, sr = sf.read(io.BytesIO(wav_bytes))
+    sf.write(str(path), y, sr, format="MP3", bitrate_mode="CONSTANT", compression_level=0.7)
+
+
 async def make(vid: str, text: str, path: Path, sem: asyncio.Semaphore) -> bool:
     """성공하면 True. 실패한 대사는 빈 파일을 남기지 않습니다."""
+    global _client
+    if _client is None:
+        _client = AsyncOpenAI()  # OPENAI_API_KEY 환경 변수 사용
     async with sem:
         cfg = VOICES[vid]
-        for attempt in range(6):
+        last = None
+        for attempt in range(4):
             try:
-                audio = bytearray()
-                async for chunk in edge_tts.Communicate(spoken(text), **cfg).stream():
-                    if chunk["type"] == "audio":
-                        audio += chunk["data"]
-                if not audio:
+                r = await _client.audio.speech.create(
+                    model=MODEL, voice=cfg["voice"], input=spoken(text), instructions=cfg["inst"], response_format="wav"
+                )
+                if not r.content:
                     raise RuntimeError("빈 음성")
-                path.write_bytes(bytes(audio))
+                encode_mp3(r.content, path)
                 return True
-            except Exception as e:  # 서버가 가끔 응답을 비우므로 잠시 쉬었다가 다시 시도
-                await asyncio.sleep(2 + attempt * 2)
+            except Exception as e:  # 일시 오류는 잠시 쉬었다가 다시 시도
                 last = e
+                await asyncio.sleep(2 + attempt * 3)
         print(f"  ! 실패: {vid} · {text[:30]}… ({last})")
         return False
 
@@ -148,7 +235,7 @@ async def main():
 
     todo = [(p, v, t) for p, (v, t) in wanted.items() if redo_all or not p.exists() or p.stat().st_size == 0]
     print(f"대사 {len(wanted)}개 · 새로 만들 것 {len(todo)}개")
-    sem = asyncio.Semaphore(2)
+    sem = asyncio.Semaphore(4)
     results = await asyncio.gather(*(make(v, t, p, sem) for p, v, t in todo))
     failed = results.count(False)
     if failed:
