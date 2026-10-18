@@ -1782,14 +1782,6 @@ export default function BuyeoTimeDetective() {
                     <p className="text-xs text-[#9c8c6e]">{stage.rewardItem.description}</p>
                   </div>
                 </div>
-                {allCleared && (
-                  <button
-                    onClick={enterEnding}
-                    className="inline-flex shrink-0 items-center justify-center gap-2 rounded-full bg-[#e2b85c] px-5 py-2.5 text-sm font-bold text-[#1a140c] transition hover:bg-[#f0cb75] focus:outline-none focus-visible:ring-4 focus-visible:ring-[#e2b85c]/40"
-                  >
-                    <Sparkles className="h-4 w-4" /> 향로로 돌아가 의식 완성하기
-                  </button>
-                )}
                 {!allCleared && nextStage && (
                   <button
                     onClick={() => goToStage(nextStage)}
@@ -1800,6 +1792,9 @@ export default function BuyeoTimeDetective() {
                 )}
               </div>
             )}
+
+            {/* 일곱 봉인을 모두 모으면: 크게 빛나는 마지막 버튼 */}
+            {isCleared && clearDialoguesDone && allCleared && <FinaleButton onClick={enterEnding} ready={!rewardPopupId} />}
           </div>
         </main>
 
@@ -1951,6 +1946,19 @@ function Shell({ children }) {
         .censer-sheen {
           background: linear-gradient(105deg, transparent 38%, rgba(255, 236, 170, .55) 50%, transparent 62%) no-repeat;
           background-size: 250% 100%; mix-blend-mode: screen; animation: censerSheen 6.5s ease-in-out infinite;
+        }
+
+        /* 마지막 '의식 완성하기' 버튼: 금빛 맥동 + 광택 */
+        @keyframes finalePulse {
+          0%, 100% { box-shadow: 0 0 22px 4px rgba(246, 220, 148, .55), 0 0 0 0 rgba(246, 220, 148, .5); }
+          50% { box-shadow: 0 0 46px 14px rgba(246, 220, 148, .9), 0 0 0 10px rgba(246, 220, 148, 0); }
+        }
+        @keyframes finaleShine { 0% { transform: translateX(-120%) skewX(-20deg); } 60%, 100% { transform: translateX(220%) skewX(-20deg); } }
+        .finale-cta { animation: finalePulse 1.8s ease-in-out infinite; }
+        .finale-cta::after {
+          content: ''; position: absolute; top: 0; bottom: 0; left: 0; width: 40%;
+          background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .75), transparent);
+          animation: finaleShine 2.6s ease-in-out infinite;
         }
 
         /* 시작 화면: 흩어지는 일곱 봉인 */
@@ -2904,6 +2912,36 @@ function AwakeningCard({ onReplay }) {
         </div>
       </div>
     </section>
+  );
+}
+
+/* 일곱 봉인을 모두 모았을 때의 마지막 버튼: 크게, 금빛으로 숨 쉬듯 빛나고 광택이 지나감. 나타나면 화면을 그쪽으로 */
+function FinaleButton({ onClick, ready = true }) {
+  const ref = useRef(null);
+  const scrolled = useRef(false);
+  // 봉인 획득 팝업이 닫힌 뒤(ready) 한 번만 버튼 쪽으로 화면 이동
+  useEffect(() => {
+    if (!ready || scrolled.current) return undefined;
+    const t = setTimeout(() => {
+      if (ref.current) ref.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      scrolled.current = true;
+    }, 400);
+    return () => clearTimeout(t);
+  }, [ready]);
+  return (
+    <div ref={ref} className="anim-pop relative mt-1 overflow-hidden rounded-3xl border-2 border-[#f6dc94]/70 bg-gradient-to-br from-[#3a2a10] via-[#24190b] to-[#3a2a10] p-5 text-center sm:p-6">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(255,220,140,0.35),transparent_65%)]" />
+      <p className="font-body relative text-xs tracking-[0.3em] text-[#f6dc94]">일곱 봉인 회수 완료</p>
+      <p className="font-display relative mt-1 text-lg text-[#fbf3de] sm:text-xl">이제 향로로 돌아갈 시간이에요!</p>
+      <button
+        onClick={onClick}
+        className="finale-cta font-display relative mt-4 inline-flex w-full items-center justify-center gap-3 overflow-hidden rounded-2xl bg-gradient-to-r from-[#e2b85c] via-[#ffe7a3] to-[#e2b85c] px-6 py-4 text-xl text-[#1a140c] shadow-[0_0_30px_rgba(246,220,148,0.6)] transition hover:scale-[1.02] focus:outline-none focus-visible:ring-4 focus-visible:ring-[#f6dc94]/60 active:scale-[0.99] sm:py-5 sm:text-2xl"
+      >
+        <Sparkles className="h-6 w-6 shrink-0 sm:h-7 sm:w-7" />
+        향로로 돌아가 의식 완성하기
+        <ChevronRight className="nudge-right h-6 w-6 shrink-0 sm:h-7 sm:w-7" />
+      </button>
+    </div>
   );
 }
 

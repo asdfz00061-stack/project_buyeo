@@ -177,8 +177,13 @@ STANDARD = (
 
 # 특정 대사에만 덧붙이는 연기 지시 (대사 글 → 추가 지시)
 LINE_EXTRA = {
+    "히익, 깜짝이야! …괜찮아, 난 향로의 정령이라고! 역사라면 자신 있어요!": (
+        " IMPORTANT for this line: start with a real, startled little shriek '히이익!' and a flustered '깜짝이야!' as if the gatekeeper's shout "
+        "made him jump, then a quick nervous breath, and bounce back with puffed-up, cheeky bravado — '괜찮아, 난 향로의 정령이라고!' "
+        "said proudly with chest out, ending with a confident, grinning '역사라면 자신 있어요!'. Fast, bouncy and very expressive."
+    ),
     "봉황 깃털이다! 앗, 몸이 살짝 따뜻해졌어. 봉인을 다 모으면 나 어떻게 되는 거지?": (
-        " IMPORTANT for this line: shout '봉황 깃털이다!!' with explosive joy like finding treasure, then a surprised little gasp '앗, 앗!' "
+        " IMPORTANT for this line: shout '봉황 깃털이다!!' with explosive joy like finding treasure, then ONE surprised little gasp '앗!' (say it only once) "
         "as warmth spreads through the body, and end with a wide-eyed, wondering, slightly nervous-excited question. Big, playful emotion."
     ),
     "배 타는 거 처음이에요! 강바람 시원하다~ 근데 물속에 정말 백제 이야기가 흐르고 있어요?": (
@@ -255,13 +260,15 @@ def collect_lines(src: str):
 
 
 SPOKEN_OVERRIDE = {
+    "히익, 깜짝이야! …괜찮아, 난 향로의 정령이라고! 역사라면 자신 있어요!":
+        "히이익! 깜짝이야!! …괘, 괜찮아! 난 향로의 정령이라고! 역사라면 자신 있어요!!",
     "드디어… 드디어 본래 모습을 되찾았어!": "드디어…! 드디어 본래 모습을 되찾았어!!! 해냈다아!! 하하하!",
     "오셨군요, 수사관님. 어젯밤 자정, 백제금동대향로 진열장에서 금빛이 번쩍이더니 향로에 깃든 일곱 개의 봉인이 사라졌습니다.":
         "오셨군요, 수사관님! 어젯밤 자정, 백제금동대향로 진열장에서 금빛이 번쩍이더니, 향로에 깃든 일곱 개의 봉인이 사라졌습니다!",
     "이 빛은…! 일곱 봉인의 힘이 하나로 모여 몸 안으로 흘러들어 와…!":
         "이 빛은…!! 일곱 봉인의 힘이… 하나로 모여… 몸 안으로 흘러들어 와…!!",
     "봉황 깃털이다! 앗, 몸이 살짝 따뜻해졌어. 봉인을 다 모으면 나 어떻게 되는 거지?":
-        "봉황 깃털이다!! 앗, 앗! 몸이 살짝 따뜻해졌어! 봉인을 다 모으면… 나 어떻게 되는 거지?!",
+        "봉황 깃털이다!! 앗! 몸이 살짝 따뜻해졌어! 봉인을 다 모으면… 나 어떻게 되는 거지?!",
     "배 타는 거 처음이에요! 강바람 시원하다~ 근데 물속에 정말 백제 이야기가 흐르고 있어요?":
         "우와아, 배 타는 거 처음이에요!! 강바람 시원하다~! 근데요, 물속에 정말 백제 이야기가 흐르고 있어요?!",
     "시인이 사셨던 곳이구나. 나도 시 한 줄 지어 볼까? …음, 금동이는 반짝반짝 금빛~ 헤헤.":
