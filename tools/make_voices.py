@@ -156,6 +156,19 @@ AWAKEN = (
 )
 AWAKEN_LINES = set()
 
+# 엔딩 변신 장면 전용 대사와 지시 (목소리 id, 상수 이름, 지시)
+SCENE_LINES = {
+    "AWAKEN_SURGE": ("hero_beast", (
+        "Geumdongi in spirit form: a little kid of about five or six with a high, bubbly, gender-neutral voice. "
+        "The golden power of all seven seals is surging through the tiny body right now. "
+        "Make a short, intense, effortful cry that rises from a trembling, straining groan '으… 으으…' into a big, high, "
+        "thrilling shout '으아아아앗!' as the power explodes — like a kids' anime hero powering up. Loud, vivid, never calm. "
+        "Natural Korean vocalization, studio-quality dry recording."
+    )),
+    "AWAKEN_REVEAL": ("hero_human", "You are Geumdongi, a fourteen-year-old Korean boy, the young hero of a fantasy adventure anime, at the exact moment he finally transforms back into his true form after a long journey. He is OVERJOYED — the happiest moment of his life. Shout it out at full volume with explosive, ecstatic joy: a breathless, trembling '드디어…!', then a huge triumphant cry '드디어 본래 모습을 되찾았어!!!' with the voice soaring high and almost cracking with happiness, then a jubilant '해냈다아!!' and bursting into real, heartfelt laughter '하하하!'. Fast, energetic tempo, big pitch jumps, breathy excitement, grinning ear to ear. Clearly a young teenage boy's voice, bright and boyish. Absolutely never flat, calm, slow, or like reading a textbook. Natural native Korean pronunciation, studio-quality dry recording."),
+}
+SCENE_INST = {}  # 대사 → 지시 (collect_lines 에서 채움)
+
 # 모든 대사 공통: 사투리 없이 표준어로 (가끔 지방 억양이 섞여 나오는 것 방지)
 STANDARD = (
     " Speak standard Seoul Korean (표준어) only, with standard pronunciation and intonation — "
@@ -227,6 +240,10 @@ def collect_lines(src: str):
     lines.add(("narrator", const("INTRO_NARRATION")))  # 시작 화면 소개 글
     lines.add(("hero_beast", awaken))
     AWAKEN_LINES.add(("hero_beast", awaken))
+    for const_name, (vid, inst) in SCENE_LINES.items():
+        t = const(const_name)
+        lines.add((vid, t))
+        SCENE_INST[t] = inst
     guide_block = re.search(r"const GUIDE_LINES = \{(.*?)\n\};", src, re.S).group(1)
     for m in re.finditer(r"^\s*'?([^':\n]+?)'?:\s*(?:" + STR + ")", guide_block, re.M):
         speaker = m.group(1).strip()
@@ -238,6 +255,7 @@ def collect_lines(src: str):
 
 
 SPOKEN_OVERRIDE = {
+    "드디어… 드디어 본래 모습을 되찾았어!": "드디어…! 드디어 본래 모습을 되찾았어!!! 해냈다아!! 하하하!",
     "오셨군요, 수사관님. 어젯밤 자정, 백제금동대향로 진열장에서 금빛이 번쩍이더니 향로에 깃든 일곱 개의 봉인이 사라졌습니다.":
         "오셨군요, 수사관님! 어젯밤 자정, 백제금동대향로 진열장에서 금빛이 번쩍이더니, 향로에 깃든 일곱 개의 봉인이 사라졌습니다!",
     "이 빛은…! 일곱 봉인의 힘이 하나로 모여 몸 안으로 흘러들어 와…!":
@@ -283,8 +301,8 @@ async def make(vid: str, text: str, path: Path, sem: asyncio.Semaphore) -> bool:
             try:
                 r = await _client.audio.speech.create(
                     model=MODEL, voice=cfg["voice"], input=spoken(text), response_format="wav",
-                    instructions=(AWAKEN if (vid, text) in AWAKEN_LINES
-                                  else cfg["inst"] + (JOY if (vid, text) in JOY_LINES else "") + LINE_EXTRA.get(text, "")) + STANDARD,
+                    instructions=SCENE_INST[text] if text in SCENE_INST else ((AWAKEN if (vid, text) in AWAKEN_LINES
+                                  else cfg["inst"] + (JOY if (vid, text) in JOY_LINES else "") + LINE_EXTRA.get(text, "")) + STANDARD),
                 )
                 if not r.content:
                     raise RuntimeError("빈 음성")
