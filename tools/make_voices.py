@@ -38,9 +38,13 @@ VOICES = {
         "아주 천천히, 문장 사이에 긴장감 있는 쉼을 두고, 비밀을 털어놓듯 낮게 말하는 대목을 살린다. "
         "딱딱한 낭독이 아니라 살아 있는 이야기꾼처럼 억양을 크게 살린다."
     )),
-    # 학예연구사: 20대 초반, 이제 막 일을 시작한 젊은 연구원
+    # 학예연구사: 20대 초반, 이제 막 일을 시작한 여리여리한 신입 연구원
     "curator": dict(voice="coral", inst=(
-        'A young Korean woman in her early twenties, about twenty-two, a fresh new museum curator who just started her career at the Buyeo National Museum. Distinctly youthful, bright, light and clear feminine voice with a naturally higher register, sounding like a real young woman in her early twenties, never mature, middle-aged, deep or husky. Lively and sincere, a little breathless with excitement and nervousness about the strange incident, warmly relieved to see the detective. Lower her voice slightly with wonder on the mysterious parts. Natural native Korean pronunciation, polished professional voice acting, studio-quality dry recording. No childish squeaking, no robotic narration.'
+        'A shy, delicate young Korean woman of about twenty-two, a brand-new junior museum curator at the Buyeo National Museum. '
+        'Very soft, gentle, airy and slightly breathy voice in a naturally high, girlish register, slender and fragile-sounding (여리여리한 목소리), light and sweet like a timid college student. '
+        'Speaks softly and politely, a little nervous and earnest about the strange incident, warmly relieved to see the detective. '
+        'Never loud, never mature, never middle-aged, never deep, husky or authoritative, no announcer tone. '
+        'Natural native Korean pronunciation, polished voice acting, studio-quality dry recording.'
     )),
     # 노승: 여든 넘은 할아버지 스님
     "monk": dict(voice="ash", inst=(
