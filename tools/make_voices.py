@@ -187,6 +187,15 @@ STANDARD = (
 
 # 특정 대사에만 덧붙이는 연기 지시 (대사 글 → 추가 지시)
 LINE_EXTRA = {
+    "국립부여박물관의 백제금동대향로에 깃든 일곱 봉인이 풀려 부여의 유적지로 흩어졌습니다. 특별 수사관인 당신은 각 장소를 탐방하고 단서를 풀어 봉인을 되찾아야 합니다.": (
+        " 이 대사는 게임의 첫 장면이다: 억양을 아주 크게, 극적으로 살린다. '일곱 봉인이 풀려'에서 목소리를 낮추고 신비롭게 끌다가 "
+        "'흩어졌습니다'에서 놀란 듯 힘을 주고, 잠깐 쉰 뒤 '특별 수사관인 당신은'을 듣는 사람을 콕 집듯 또렷하게 부르며, "
+        "'봉인을 되찾아야 합니다'는 사명을 맡기듯 힘 있고 설레게 끝맺는다. 단조로운 낭독은 절대 안 된다."
+    ),
+    "봉황…! 맞아요. 봉황은 태평성대에만 나타난다는 새죠. 깃털 조각이 첫 번째 봉인이었군요.": (
+        " IMPORTANT for this line: the first word '봉황…!' must be a soft, high, breathy, girlish little gasp of wonder — "
+        "never a low, deep or masculine sound. Keep the whole line in the same light, high young-woman voice."
+    ),
     "히익, 깜짝이야! …괜찮아, 난 향로의 정령이라고! 역사라면 자신 있어요!": (
         " IMPORTANT for this line: start with a real, startled little shriek '히이익!' and a flustered '깜짝이야!' as if the gatekeeper's shout "
         "made him jump, then a quick nervous breath, and bounce back with puffed-up, cheeky bravado — '괜찮아, 난 향로의 정령이라고!' "
