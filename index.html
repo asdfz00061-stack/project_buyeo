@@ -572,11 +572,6 @@ const STAGES = [
     npc: { name: '학예연구사', role: '국립부여박물관 학예연구사' },
     dialogues: [
       {
-        speaker: NARRATOR,
-        avatar: null,
-        text: '자정이 막 지난 국립부여박물관. 텅 빈 향로 진열장 앞에서 학예연구사가 수사관을 기다리고 있다.',
-      },
-      {
         speaker: '학예연구사',
         avatar: './images/characters/curator.png',
         text: '오셨군요, 수사관님. 어젯밤 자정, 백제금동대향로 진열장에서 금빛이 번쩍이더니 향로에 깃든 일곱 개의 봉인이 사라졌습니다.',
@@ -654,11 +649,6 @@ const STAGES = [
     npc: { name: '노승', role: '정림사지를 돌보는 노승' },
     dialogues: [
       {
-        speaker: NARRATOR,
-        avatar: null,
-        text: '새벽안개가 내려앉은 정림사지. 천사백 년을 버틴 오층석탑 아래에서 노승이 조용히 염주를 굴리고 있다.',
-      },
-      {
         speaker: '노승',
         avatar: './images/characters/monk.png',
         text: '나무아미타불… 백제가 멸망하고 절터는 모두 불타 사라졌으나, 이 석탑만큼은 천년 넘게 자리를 지키고 있지요.',
@@ -730,11 +720,6 @@ const STAGES = [
     },
     npc: { name: '백제 수문장', role: '부소산성을 지키는 수문장' },
     dialogues: [
-      {
-        speaker: NARRATOR,
-        avatar: null,
-        text: '솔바람이 서늘한 부소산성 숲길. 갑옷 차림의 백제 수문장이 매서운 눈빛으로 길을 막아선다.',
-      },
       {
         speaker: '백제 수문장',
         avatar: './images/characters/gatekeeper.png',
@@ -808,11 +793,6 @@ const STAGES = [
     npc: { name: '뱃사공', role: '백마강 황포돛배 뱃사공' },
     dialogues: [
       {
-        speaker: NARRATOR,
-        avatar: null,
-        text: '황포돛배가 물결에 흔들리는 구드래나루. 노를 쥔 뱃사공이 강 건너 낙화암을 바라보고 있다.',
-      },
-      {
         speaker: '뱃사공',
         avatar: './images/characters/boatman.png',
         text: '구드래나루에서 고란사까지 노를 젓는 뱃사공입니다. 물결 아래로 백제의 슬픈 역사가 흐르고 있지요.',
@@ -884,11 +864,6 @@ const STAGES = [
     },
     npc: { name: '궁녀', role: '포룡정을 거니는 여인' },
     dialogues: [
-      {
-        speaker: NARRATOR,
-        avatar: null,
-        text: '연꽃 향이 은은한 궁남지. 포룡정으로 이어진 다리 위를 한 궁녀가 천천히 거닐고 있다.',
-      },
       {
         speaker: '궁녀',
         avatar: './images/characters/court_lady.png',
@@ -962,11 +937,6 @@ const STAGES = [
     npc: { name: '능지기', role: '능산리 고분군을 지키는 자' },
     dialogues: [
       {
-        speaker: NARRATOR,
-        avatar: null,
-        text: '둥근 봉분들이 나란히 잠든 부여왕릉원. 삿갓을 멘 능지기가 고분 곁을 묵묵히 지키고 있다.',
-      },
-      {
         speaker: '능지기',
         avatar: './images/characters/tomb_keeper.png',
         text: '이곳은 사비 시대 백제의 역대 왕과 왕족들이 영면해 계신 신성한 능산리 고분군입니다.',
@@ -1039,11 +1009,6 @@ const STAGES = [
     npc: { name: '해설사', role: '신동엽 문학관 해설사' },
     dialogues: [
       {
-        speaker: NARRATOR,
-        avatar: null,
-        text: '시인이 나고 자란 옛집 곁, 신동엽 문학관. 해설사가 시 구절이 걸린 벽 앞에서 수사관을 맞이한다.',
-      },
-      {
         speaker: '해설사',
         avatar: './images/characters/docent.png',
         text: '수사관님, 이번 여정은 백제의 고도 부여에서 태어나 역사를 노래한 민족시인 신동엽 문학관입니다.',
@@ -1096,7 +1061,7 @@ const TOTAL = STAGES.length;
 // - 마지막으로 봉인을 모은 장소에서는 어디든 완성 대사가 이어집니다.
 // 시작 화면에서 나레이션이 읽어 주는 소개 글 (화면에 보이는 글과 같은 내용)
 const INTRO_NARRATION =
-  '국립부여박물관의 백제금동대향로에 깃든 일곱 봉인이 풀려 부여의 유적지로 흩어졌습니다. 특별 수사관인 당신은 각 장소를 탐방하고 단서를 풀어 봉인을 되찾아야 합니다. 막히는 곳이 있으면 다른 유적지부터 먼저 조사해도 괜찮습니다.';
+  '국립부여박물관의 백제금동대향로에 깃든 일곱 봉인이 풀려 부여의 유적지로 흩어졌습니다. 특별 수사관인 당신은 각 장소를 탐방하고 단서를 풀어 봉인을 되찾아야 합니다.';
 
 // 공통 대사 (음성 파일을 미리 만들 수 있도록 고정 문장으로 둡니다)
 const FINALE_LINE = '일곱 개의 봉인이 모두 모였습니다! 어서 국립부여박물관의 향로로 돌아가 의식을 완성하십시오!';
@@ -1467,7 +1432,6 @@ function BuyeoTimeDetective() {
               <p className="font-body text-[15px] leading-7 text-[#d9ccb0]">
                 국립부여박물관의 <b className="text-[#f3e7c9]">백제금동대향로</b>에 깃든 일곱 봉인이 풀려 부여의 유적지로 흩어졌습니다.
                 특별 수사관인 당신은 각 장소를 탐방하고 단서를 풀어 봉인을 되찾아야 합니다.
-                막히는 곳이 있으면 다른 유적지부터 먼저 조사해도 괜찮습니다.
               </p>
               <ul className="font-body mt-4 grid grid-cols-2 gap-2 text-[13px] text-[#b8a888]">
                 {STAGES.map((s) => {
