@@ -1809,10 +1809,14 @@ function Shell({ children }) {
         }
 
         /* 시작 화면: 흩어지는 일곱 봉인 */
-        .seal-orb {
-          background: radial-gradient(circle, #fff3c4 0 28%, var(--c) 72%);
-          box-shadow: 0 0 10px 3px var(--c), 0 0 26px 8px rgba(255, 220, 140, .45);
+        .seal-item {
+          color: #ffe08a;
+          filter: drop-shadow(0 0 3px #fff3c4) drop-shadow(0 0 8px var(--c)) drop-shadow(0 0 16px rgba(255, 210, 120, .7));
           will-change: transform, opacity;
+        }
+        .seal-item::before {
+          content: ''; position: absolute; inset: 18%; border-radius: 9999px;
+          background: radial-gradient(circle, rgba(255, 243, 196, .55), transparent 70%);
         }
         @keyframes censerBurst {
           0% { filter: brightness(1); }
@@ -2784,7 +2788,7 @@ function SealScatter() {
 
       STAGES.forEach((stage, i) => {
         const target = host.querySelector(`[data-seal-target="${stage.id}"]`);
-        const orb = layer.children[i];
+        const orb = layer.querySelector(`[data-seal="${stage.id}"]`);
         if (!target || !orb) return;
         const icon = target.querySelector('svg') || target;
         const tr = icon.getBoundingClientRect();
@@ -2794,22 +2798,34 @@ function SealScatter() {
         const side = i - (STAGES.length - 1) / 2;
         const cx = sx + side * 95;
         const cy = sy - 170 - Math.abs(side) * 18;
+        const feather = stage.id === 'museum';
+        const spin = (side >= 0 ? 1 : -1) * (feather ? 0 : 320 + Math.abs(side) * 40);
         const frames = [];
-        const N = 12;
+        const N = 16;
         for (let k = 0; k <= N; k += 1) {
           const t = k / N;
           const x = (1 - t) ** 2 * sx + 2 * (1 - t) * t * cx + t * t * ex;
           const y = (1 - t) ** 2 * sy + 2 * (1 - t) * t * cy + t * t * ey;
-          const sc = k === 0 ? 0.2 : k === N ? 0.75 : 1 + 0.15 * Math.sin(Math.PI * t);
-          frames.push({ transform: `translate(${x}px, ${y}px) translate(-50%, -50%) scale(${sc})`, opacity: k === 0 ? 0 : 1 });
+          const sc = k === 0 ? 0.2 : k === N ? 0.8 : 1.15 + 0.2 * Math.sin(Math.PI * t);
+          // 깃털은 하늘하늘 흔들리며, 나머지는 빙글빙글 돌며 날아감
+          const rot = feather ? -25 + 35 * Math.sin(t * Math.PI * 3) : -30 + spin * t;
+          frames.push({ transform: `translate(${x}px, ${y}px) translate(-50%, -50%) rotate(${rot.toFixed(1)}deg) scale(${sc.toFixed(2)})`, opacity: k === 0 ? 0 : 1 });
         }
-        const fly = orb.animate(frames, { duration: 1800, delay: 350 + i * 160, easing: 'cubic-bezier(.4,.05,.25,1)', fill: 'both' });
+        const delay = 350 + i * 160;
+        const opts = { duration: 1900, easing: 'cubic-bezier(.4,.05,.25,1)', fill: 'both' };
+        // 잔상: 같은 길을 조금 늦게, 흐리게
+        const trails = layer.querySelectorAll(`[data-trail="${stage.id}"]`);
+        trails.forEach((el, n) => {
+          const fade = frames.map((f, k) => ({ ...f, opacity: k === 0 || k === N ? 0 : 0.42 / (n + 1) }));
+          anims.push(el.animate(fade, { ...opts, delay: delay + 70 * (n + 1) }));
+        });
+        const fly = orb.animate(frames, { ...opts, delay });
         anims.push(fly);
         fly.onfinish = () => {
           if (cancelled) return;
           target.classList.add('seal-landed');
           const end = `translate(${ex}px, ${ey}px) translate(-50%, -50%)`;
-          anims.push(orb.animate([{ transform: `${end} scale(.75)`, opacity: 1 }, { transform: `${end} scale(2.2)`, opacity: 0 }], { duration: 600, easing: 'ease-out', fill: 'forwards' }));
+          anims.push(orb.animate([{ transform: `${end} scale(.8)`, opacity: 1 }, { transform: `${end} scale(2.4)`, opacity: 0 }], { duration: 650, easing: 'ease-out', fill: 'forwards' }));
           timers.push(setTimeout(() => target.classList.remove('seal-landed'), 1800));
         };
       });
@@ -2829,15 +2845,19 @@ function SealScatter() {
   return (
     <div ref={ref} className="pointer-events-none absolute inset-0 z-20" aria-hidden="true">
       {STAGES.map((stage) => {
-        const I = THEME[stage.id].icon;
+        const Item = ITEM_ICON[stage.id];
+        const style = { opacity: 0, '--c': THEME[stage.id].accent };
         return (
-          <span
-            key={stage.id}
-            className="seal-orb absolute left-0 top-0 flex h-7 w-7 items-center justify-center rounded-full"
-            style={{ opacity: 0, '--c': THEME[stage.id].accent }}
-          >
-            <I className="h-4 w-4 text-[#fff8e0]" strokeWidth={2.2} />
-          </span>
+          <React.Fragment key={stage.id}>
+            {[1, 2].map((n) => (
+              <span key={n} data-trail={stage.id} className="seal-item absolute left-0 top-0 flex h-10 w-10 items-center justify-center" style={style}>
+                <Item className="h-7 w-7" strokeWidth={1.9} />
+              </span>
+            ))}
+            <span data-seal={stage.id} className="seal-item absolute left-0 top-0 flex h-10 w-10 items-center justify-center" style={style}>
+              <Item className="h-7 w-7" strokeWidth={1.9} />
+            </span>
+          </React.Fragment>
         );
       })}
     </div>
