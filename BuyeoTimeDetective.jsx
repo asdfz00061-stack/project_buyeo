@@ -586,7 +586,7 @@ const STAGES = [
         speaker: '학예연구사',
         avatar: './images/characters/curator.png',
         next: 'jeongnimsa',
-        text: '깃털이 가리키는 빛이 서쪽, 정림사지 오층석탑 쪽으로 뻗어 있어요. 다음 봉인은 그곳에 있을 겁니다.',
+        text: '깃털이 가리키는 빛이 서쪽, 정림사지의 오래된 석탑 쪽으로 뻗어 있어요. 다음 봉인은 그곳에 있을 겁니다.',
       },
     ],
   },
@@ -597,7 +597,7 @@ const STAGES = [
     era: '사비 도성의 중심 사찰',
     // 사진 경로: 상대경로(images/...) 또는 https:// 주소. 비워 두면('') 그라데이션 대체 화면이 나옵니다.
     image: 'images/jeongnimsa.jpg',
-    description: '1,400년을 버텨 온 오층석탑이 서 있는 사찰 터. 탑의 돌마다 오래된 글자가 남아 있다.',
+    description: '1,400년을 버텨 온 석탑이 서 있는 사찰 터. 탑의 돌마다 오래된 글자가 남아 있다.',
     rewardItem: {
       name: '먹물 탁본 조각',
       shortName: '먹물 탁본',
@@ -1866,7 +1866,8 @@ function Shell({ children }) {
         ${TAILWIND_CSS}
         .font-display { font-family: 'Gowun Batang', 'Nanum Myeongjo', 'AppleMyungjo', serif; font-weight: 700; }
         .font-body { font-family: 'Gowun Dodum', 'Apple SD Gothic Neo', 'Malgun Gothic', system-ui, sans-serif; }
-        .font-body { font-family: 'Gowun Dodum', 'Apple SD Gothic Neo', 'Malgun Gothic', system-ui, sans-serif; }
+        /* 한국어 문장은 단어(어절) 중간에서 줄이 바뀌지 않게 */
+        .font-body, .font-display { word-break: keep-all; overflow-wrap: break-word; }
 
         img {
             image-rendering: auto;

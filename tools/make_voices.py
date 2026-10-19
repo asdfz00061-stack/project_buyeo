@@ -184,6 +184,11 @@ STANDARD = (
 
 # 특정 대사에만 덧붙이는 연기 지시 (대사 글 → 추가 지시)
 LINE_EXTRA = {
+    "고란초 잎이다! 냄새만 맡아도 기운이 불끈 솟는 것 같아!": (
+        " IMPORTANT for this line: bursting with excitement — a delighted, high shout '고란초 잎이다!!' like finding treasure, "
+        "then a big happy sniff and a dreamy '냄새만 맡아도…', then exploding with energy on '기운이 불끈 솟는 것 같아!!' "
+        "as if flexing tiny arms, full of giggly, bouncy joy. Very expressive, big pitch jumps, never flat."
+    ),
     "청동 거울에 내 얼굴이… 어? 방금 거울 속에 처음 보는 형아가 비친 것 같은데?!": (
         " IMPORTANT for this line: unhurried, with clear pauses. Start slow and curious, leaning in to peer at the mirror — "
         "'청동 거울에 내 얼굴이…' trailing off softly. Then a sudden, startled little '어?' after a short beat of silence. "
