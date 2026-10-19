@@ -163,6 +163,7 @@ const BOOTH = (() => {
 const BOOTH_GOAL = 3;
 const BOOTH_RETURN_SEC = 30;
 const SEVEN = BOOTH ? '' : '일곱 '; // 화면 문구의 '일곱' (부스 모드에서는 빼고 표시)
+const LETTER_TILES = BOOTH; // 주관식을 타자 대신 글자 조각 고르기로 (어린 체험자가 자판에서 막히지 않게)
 
 // 말할 때 움직이는 입 위치: 초상화 이미지(3:4) 기준 %. x·y = 입 중심, w = 입 너비
 // jaw 가 있으면 입을 덧그리지 않고 아랫입술·턱을 살짝 내려 입이 벌어지게 함 (원래 입이 크게 그려진 인물용)
@@ -619,6 +620,7 @@ const STAGES = [
       question: '금동대향로 뚜껑 최정상에서 여의주를 품고 날개를 펼친 상상의 새는 무엇인가?',
       placeholder: '정답을 입력하세요 (예: 두 글자)',
       answers: ['봉황'],
+      decoys: ['용', '학', '거', '북'], // 부스 모드 글자 고르기에 섞을 헷갈리는 글자
       hint: '용과 함께 동아시아에서 상서로운 존재로 여겨진 새예요. 수컷 "봉"과 암컷 "황"을 합쳐 부릅니다.',
       successMessage: '정답입니다! 진열장 위로 금빛 깃털이 내려앉았습니다.',
       failMessage: '봉인이 반응하지 않습니다. 향로 꼭대기의 새를 다시 떠올려 보세요.',
@@ -763,6 +765,7 @@ const STAGES = [
       question: '부소산성 북쪽 사찰 바위틈에서 자라며, 왕들이 약수물 잔에 띄웠다고 전해지는 이 식물의 이름은?',
       placeholder: '식물 이름 입력 (3글자)',
       answers: ['고란초'],
+      decoys: ['난', '국', '화', '쑥'],
       hint: "낙화암 아래 자리한 사찰 '고란사'의 이름 유래가 된 양치식물입니다. OO초",
       successMessage: '정답이다! 이슬 맺힌 고란초 잎과 함께 세 번째 봉인이 풀렸도다.',
       failMessage: '그 풀이 아니다. 바위틈에서 자라는 사찰 이름의 유래가 된 식물을 떠올려보라.',
@@ -907,6 +910,7 @@ const STAGES = [
       question: '신라 선화공주와 혼인하고 궁남지를 축조한 백제의 제30대 왕은 누구인가?',
       placeholder: '왕의 이름 입력 (예: 문왕)',
       answers: ['무왕', '백제무왕', '서동'],
+      decoys: ['성', '의', '자', '문'],
       hint: '서동요 설화의 주인공이자 훗날 익산 미륵사를 세운 왕입니다.',
       successMessage: '정답입니다! 연못 수면 위로 금빛 연꽃 씨앗이 떠올랐습니다.',
       failMessage: '그 왕이 아닙니다. 서동으로 불렸던 백제의 왕을 떠올려 보세요.',
@@ -1052,6 +1056,7 @@ const STAGES = [
         "신동엽 시인의 대표작 《껍데기는 가라》 구절입니다. 빈칸에 들어갈 낱말은?\n'껍데기는 가라. / 四月도 ( 빈칸 )만 남고 / 껍데기는 가라.'",
       placeholder: '빈칸의 낱말 입력',
       answers: ['알맹이'],
+      decoys: ['껍', '데', '기', '씨'],
       hint: '껍데기와 정반대되는 핵심 실체를 뜻하는 순우리말입니다.',
       successMessage: "완벽합니다! 일곱 번째 봉인인 '순수의 시 구절'을 획득했습니다!",
       failMessage: '시 구절이 맞지 않습니다. 껍데기의 반대말을 생각해보세요.',
@@ -1128,6 +1133,7 @@ const buildClearDialogues = (s, visited) => {
   }
   return lines;
 };
+const NAME_MAX = 8; // 수료증에 들어갈 수사관 이름 최대 글자 수
 const normalize = (s) => String(s ?? '').replace(/\s+/g, '').toLowerCase();
 const formatDate = (d) => `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일`;
 const rewardOf = (s) => ({ ...s.rewardItem, stageId: s.id, stageName: s.name });
@@ -1142,6 +1148,7 @@ const INITIAL_STATE = {
   introReadStages: [],
   attemptsByStage: {},
   completedAt: null,
+  playerName: '',
 };
 
 // 저장된 진행을 읽어 오되, 장소 id 등이 맞지 않는 값은 버리고 기본값으로
@@ -1169,6 +1176,7 @@ const loadSave = () => {
     introReadStages: idList(s.introReadStages),
     attemptsByStage: attempts,
     completedAt: done && !Number.isNaN(done.getTime()) ? done : null,
+    playerName: typeof s.playerName === 'string' ? s.playerName.slice(0, NAME_MAX) : '',
   };
 };
 
@@ -1201,6 +1209,7 @@ function BuyeoTimeDetective() {
   const [hintStages, setHintStages] = useState(saved.hintStages);
   const [introReadStages, setIntroReadStages] = useState(saved.introReadStages); // 도입 대화를 끝까지 본 장소 (다시 오면 바로 단서로)
   const [completedAt, setCompletedAt] = useState(saved.completedAt);
+  const [playerName, setPlayerName] = useState(saved.playerName); // 수료증에 들어갈 이름 (비워도 됨)
 
   // ---- 소리 설정 (효과음 · 음성 읽기) ----
   const [settings, setSettings] = useState(() => ({ sfx: true, voice: true, ...(readJSON(SETTINGS_KEY) || {}) }));
@@ -1234,8 +1243,9 @@ function BuyeoTimeDetective() {
       introReadStages,
       attemptsByStage,
       completedAt: completedAt ? completedAt.toISOString() : null,
+      playerName,
     });
-  }, [gameStatus, currentStageId, visitedStages, dialogueStep, mistakeCount, hintStages, introReadStages, attemptsByStage, completedAt]);
+  }, [gameStatus, currentStageId, visitedStages, dialogueStep, mistakeCount, hintStages, introReadStages, attemptsByStage, completedAt, playerName]);
 
   // 화면을 떠나거나 엔딩으로 넘어가면 읽던 음성을 멈춤
   useEffect(() => {
@@ -1300,6 +1310,7 @@ function BuyeoTimeDetective() {
     setIntroReadStages([]);
     setAttemptsByStage({});
     setCompletedAt(null);
+    setPlayerName('');
     setRevealAnswer(false);
     setRewardPopupId(null);
     resetStageUI();
@@ -1309,7 +1320,9 @@ function BuyeoTimeDetective() {
   const startGame = () => {
     Sound.unlock();
     VoicePlayer.unlock();
+    const name = playerName.trim();
     resetProgress();
+    setPlayerName(name);
     setGameStatus('playing');
   };
 
@@ -1506,12 +1519,30 @@ function BuyeoTimeDetective() {
                 </button>
               </div>
             ) : (
+              <>
+              <label className="font-body mx-auto mt-7 block max-w-xs text-left">
+                <span className="text-xs text-[#9c8c6e]">수사관 이름 (수료증에 들어가요 · 안 써도 돼요)</span>
+                <input
+                  type="text"
+                  value={playerName}
+                  maxLength={NAME_MAX}
+                  onChange={(e) => setPlayerName(e.target.value.slice(0, NAME_MAX))}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.nativeEvent.isComposing) startGame();
+                  }}
+                  placeholder="예: 김부여"
+                  autoComplete="off"
+                  enterKeyHint="go"
+                  className="mt-1.5 w-full rounded-xl border border-[#4a3b26] bg-[#120f0c] px-4 py-2.5 text-center text-base text-[#f6ecd2] placeholder:text-[#5f5544] focus:border-[#e2b85c] focus:outline-none focus:ring-2 focus:ring-[#e2b85c]/30"
+                />
+              </label>
               <button
                 onClick={startGame}
-                className={`font-body mt-8 inline-flex items-center gap-2 rounded-full bg-[#e2b85c] px-8 py-3.5 text-base font-bold text-[#1a140c] transition hover:bg-[#f0cb75] focus:outline-none focus-visible:ring-4 focus-visible:ring-[#e2b85c]/40 active:scale-[0.98]${done ? ' start-ready' : ''}`}
+                className={`font-body mt-5 inline-flex items-center gap-2 rounded-full bg-[#e2b85c] px-8 py-3.5 text-base font-bold text-[#1a140c] transition hover:bg-[#f0cb75] focus:outline-none focus-visible:ring-4 focus-visible:ring-[#e2b85c]/40 active:scale-[0.98]${done ? ' start-ready' : ''}`}
               >
                 수사 시작하기 <ChevronRight className="h-5 w-5" />
               </button>
+              </>
             )}
             <p className="font-body mt-4 text-xs text-[#7d6f57]">진행 상황은 이 기기의 브라우저에 자동으로 저장됩니다.</p>
             <p className="font-body mt-1 text-[11px] text-[#6f6350]">{CENSER_CREDIT}</p>
@@ -1528,6 +1559,7 @@ function BuyeoTimeDetective() {
     return (
       <Shell>
         <EndingScreen
+          playerName={playerName.trim()}
           inventory={inventory}
           completedAt={completedAt}
           mistakeCount={mistakeCount}
@@ -2431,7 +2463,7 @@ function SealStamp({ className = '' }) {
 }
 
 /* 엔딩: 향로 복원 + 유물 원형 배치 + 수료증 */
-function EndingScreen({ inventory, completedAt, mistakeCount, hintCount, onOpenNotebook, onRestart, onReplayAwakening }) {
+function EndingScreen({ playerName, inventory, completedAt, mistakeCount, hintCount, onOpenNotebook, onRestart, onReplayAwakening }) {
   const dateText = formatDate(completedAt || new Date());
   const relics = STAGES.map((s, i) => {
     const angle = -90 + (360 / STAGES.length) * i;
@@ -2568,7 +2600,7 @@ function EndingScreen({ inventory, completedAt, mistakeCount, hintCount, onOpenN
             <div className="mt-5 flex items-start gap-4">
               <dl className="font-body grid min-w-0 flex-1 grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-2 text-sm sm:gap-x-4 sm:text-[15px]">
                 <dt className="text-[#8a6a3c]">수사관 이름</dt>
-                <dd className="font-display font-bold text-[#2a1d0e]">부여 시간 탐정</dd>
+                <dd className="font-display font-bold text-[#2a1d0e]">{playerName || '부여 시간 탐정'}</dd>
                 <dt className="text-[#8a6a3c]">해결 날짜</dt>
                 <dd className="flex items-center gap-1.5 font-bold text-[#2a1d0e] tabular-nums">
                   <Calendar className="h-4 w-4 text-[#8a6a3c]" /> {dateText}
@@ -2591,7 +2623,7 @@ function EndingScreen({ inventory, completedAt, mistakeCount, hintCount, onOpenN
             </div>
 
             <p className="font-body mt-5 border-t border-[#b0813a]/40 pt-4 pr-24 text-[13px] leading-6 text-[#4a3820] sm:pr-28 sm:text-sm">
-              위 수사관은 부여 {SEVEN}유적지를 탐방하여 백제금동대향로의 봉인을 모두 되찾았기에, 그 공로를 기려 이 증서를 수여합니다.
+              {playerName ? `${playerName} 수사관은` : '위 수사관은'} 부여 {SEVEN}유적지를 탐방하여 백제금동대향로의 봉인을 모두 되찾았기에, 그 공로를 기려 이 증서를 수여합니다.
             </p>
             <p className="font-display mt-3 pr-24 text-sm text-[#3a2a17] sm:pr-28">국립부여박물관 특별수사본부</p>
 
@@ -3680,6 +3712,87 @@ function RewardPopup({ stage, count, onClose }) {
   );
 }
 
+/* 주관식 글자 조각: 정답 글자 + 헷갈리는 글자를 섞어 보여 주고, 눌러서 칸을 채움. 채운 칸을 누르면 빠짐 */
+function LetterTiles({ quiz, value, onChange }) {
+  const answer = String(quiz.answers[0]).replace(/\s+/g, '');
+  const tiles = useMemo(() => {
+    const all = [...answer, ...(quiz.decoys || [])].map((ch, i) => ({ ch, i, isAnswer: i < answer.length }));
+    // 문제마다 늘 같은 순서로 섞되(다시 그려도 자리가 바뀌지 않게), 정답 글자끼리는 서로 붙지 않게 떨어뜨림
+    const base = [...quiz.question].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7);
+    const shuffle = (seed) => {
+      let x = (base + seed * 2654435761) >>> 0; // 간단한 난수 (같은 문제·같은 seed면 늘 같은 결과)
+      const rand = () => {
+        x ^= x << 13; x >>>= 0; x ^= x >>> 17; x ^= x << 5; x >>>= 0;
+        return x / 4294967296;
+      };
+      const a = [...all];
+      for (let n = a.length - 1; n > 0; n -= 1) {
+        const m = Math.floor(rand() * (n + 1));
+        [a[n], a[m]] = [a[m], a[n]];
+      }
+      return a;
+    };
+    let best = null;
+    for (let seed = 1; seed <= 200; seed += 1) {
+      const order = shuffle(seed);
+      const at = order.map((t, n) => (t.isAnswer ? n : -1)).filter((n) => n >= 0);
+      const gap = Math.min(...at.slice(1).map((n, j) => n - at[j]));
+      const inOrder = order.filter((t) => t.isAnswer).every((t, j) => t.i === j); // 정답 순서 그대로 놓이는 것도 피함
+      if (!best || gap > best.gap) best = { order, gap };
+      if (gap >= 2 && !inOrder) return order;
+    }
+    return best.order;
+  }, [quiz]);
+  const [picked, setPicked] = useState([]); // 고른 조각 번호 (순서대로)
+  // 바깥에서 입력이 비워지면(다른 장소로 이동 등) 고른 것도 비움
+  useEffect(() => {
+    if (value === '' && picked.length) setPicked([]);
+  }, [value]);
+  const update = (next) => {
+    setPicked(next);
+    onChange(next.map((n) => tiles[n].ch).join(''));
+  };
+  return (
+    <div className="font-body">
+      <div className="flex justify-center gap-2" aria-label="고른 글자">
+        {[...answer].map((_, slot) => {
+          const n = picked[slot];
+          return (
+            <button
+              type="button"
+              key={slot}
+              disabled={n == null}
+              onClick={() => update(picked.filter((_, j) => j !== slot))}
+              className={`flex h-14 w-14 items-center justify-center rounded-xl border-2 text-2xl font-bold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#e2b85c]/60 ${n == null ? 'border-dashed border-[#5a4a32] text-transparent' : 'border-[#e2b85c] bg-[#e2b85c]/15 text-[#f6ecd2]'
+                }`}
+            >
+              {n == null ? '·' : tiles[n].ch}
+            </button>
+          );
+        })}
+      </div>
+      <div className="mt-4 flex flex-wrap justify-center gap-2" aria-label="글자 조각">
+        {tiles.map((t, n) => {
+          const used = picked.includes(n);
+          return (
+            <button
+              type="button"
+              key={n}
+              disabled={used || picked.length >= answer.length}
+              onClick={() => update([...picked, n])}
+              className={`h-12 w-12 rounded-xl border text-xl font-bold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#e2b85c]/60 active:scale-95 ${used ? 'border-[#2e261b] text-[#4f4535]' : 'border-[#6b5636] bg-[#2a2117] text-[#f3e7c9] hover:border-[#e2b85c] disabled:opacity-60'
+                }`}
+            >
+              {t.ch}
+            </button>
+          );
+        })}
+      </div>
+      <p className="mt-3 text-center text-xs text-[#9c8c6e]">글자를 눌러 칸을 채우세요 · 채운 칸을 누르면 빠져요</p>
+    </div>
+  );
+}
+
 function QuizPanel({
   quiz,
   answerInput,
@@ -3774,6 +3887,8 @@ function QuizPanel({
                 </button>
               ))}
             </div>
+          ) : LETTER_TILES ? (
+            <LetterTiles quiz={quiz} value={answerInput} onChange={setAnswerInput} />
           ) : (
             <input
               ref={inputRef}
@@ -3802,7 +3917,7 @@ function QuizPanel({
             className="font-body inline-flex items-center justify-center gap-2 rounded-full bg-[#e2b85c] px-6 py-2.5 text-sm font-bold text-[#1a140c] transition hover:bg-[#f0cb75] focus:outline-none focus-visible:ring-4 focus-visible:ring-[#e2b85c]/40 active:scale-[0.98]"
           >
             <Send className="h-4 w-4" /> 정답 제출
-            {quiz.type === 'text' && <span className="hidden text-[11px] font-normal opacity-70 sm:inline">Enter</span>}
+            {quiz.type === 'text' && !LETTER_TILES && <span className="hidden text-[11px] font-normal opacity-70 sm:inline">Enter</span>}
           </button>
         </div>
       </form>
