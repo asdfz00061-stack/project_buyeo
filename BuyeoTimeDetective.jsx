@@ -1646,7 +1646,7 @@ export default function BuyeoTimeDetective() {
           </section>
 
           <div className="flex flex-col gap-5 p-5 sm:p-7">
-            <p className="font-body max-w-prose text-[14px] leading-6 text-[#cdbf9f]">{stage.description}</p>
+            <p className="font-body text-[14px] leading-6 text-[#cdbf9f]" style={{ textWrap: 'pretty' }}>{stage.description}</p>
 
             {/* 준비 중인 스테이지 */}
             {!isPlayable && (

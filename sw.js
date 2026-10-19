@@ -3,7 +3,7 @@
  * - 버전이 고정된 라이브러리·음성·사진은 한 번 받으면 저장해 두고 재사용 (유적지에서 신호가 약해도 동작)
  * 파일 구성을 크게 바꾸면 CACHE 이름의 숫자를 올려 주세요.
  */
-const CACHE = 'buyeo-detective-v29'; // v29: 정답 노출 문구 제거, 줄바꿈, 고란초·해설사 음성, 봉황 깃털 그림
+const CACHE = 'buyeo-detective-v30'; // v29: 정답 노출 문구 제거, 줄바꿈, 고란초·해설사 음성, 봉황 깃털 그림
 const CORE = [
   './',
   './manifest.webmanifest',
