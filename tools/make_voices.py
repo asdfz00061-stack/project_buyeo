@@ -184,6 +184,21 @@ STANDARD = (
 
 # 특정 대사에만 덧붙이는 연기 지시 (대사 글 → 추가 지시)
 LINE_EXTRA = {
+    "어젯밤 자정, 국립부여박물관.": (
+        " IMPORTANT: this is the opening of the game, told like an urgent, dramatic breaking-news bulletin mixed with a movie trailer. Not a slow bedtime story: tense, gripping, faster pace, crisp and powerful, with strong dramatic intonation. Low, hushed and suspenseful, setting a mysterious midnight scene, a short pause after '자정,'."
+    ),
+    "1,400년 동안 잠들어 있던 백제금동대향로의 봉인이… 풀렸다!": (
+        " IMPORTANT: this is the opening of the game, told like an urgent, dramatic breaking-news bulletin mixed with a movie trailer. Not a slow bedtime story: tense, gripping, faster pace, crisp and powerful, with strong dramatic intonation. Build tension steadily through the sentence, hold a breathless pause on '봉인이…', then explode on '풀렸다!' with shock and force."
+    ),
+    "일곱 개의 봉인이 빛이 되어 부여 곳곳으로 흩어졌다.": (
+        " IMPORTANT: this is the opening of the game, told like an urgent, dramatic breaking-news bulletin mixed with a movie trailer. Not a slow bedtime story: tense, gripping, faster pace, crisp and powerful, with strong dramatic intonation. Fast and vivid, as if watching seven lights shoot across the sky, rising wonder and urgency."
+    ),
+    "봉인을 되찾지 못하면, 향로의 힘은 영원히 사라진다…": (
+        " IMPORTANT: this is the opening of the game, told like an urgent, dramatic breaking-news bulletin mixed with a movie trailer. Not a slow bedtime story: tense, gripping, faster pace, crisp and powerful, with strong dramatic intonation. Grave and ominous, slower, lower, a chilling warning that trails off."
+    ),
+    "특별 수사관, 지금 바로 출동하라!": (
+        " IMPORTANT: this is the opening of the game, told like an urgent, dramatic breaking-news bulletin mixed with a movie trailer. Not a slow bedtime story: tense, gripping, faster pace, crisp and powerful, with strong dramatic intonation. A bold, rousing call to action, confident and thrilling, addressing the listener directly, strong finish."
+    ),
     "고란초 잎이다! 냄새만 맡아도 기운이 불끈 솟는 것 같아!": (
         " IMPORTANT for this line: bursting with excitement — a delighted, high shout '고란초 잎이다!!' like finding treasure, "
         "then a big happy sniff and a dreamy '냄새만 맡아도…', then exploding with energy on '기운이 불끈 솟는 것 같아!!' "
@@ -194,11 +209,6 @@ LINE_EXTRA = {
         "'청동 거울에 내 얼굴이…' trailing off softly. Then a sudden, startled little '어?' after a short beat of silence. "
         "Then, half spooked and half amazed, eyes wide, '방금 거울 속에 처음 보는 형아가 비친 것 같은데?!' rising with goosebumps-y wonder "
         "and ending on an excited, disbelieving question. Big, vivid emotion, never rushed."
-    ),
-    "국립부여박물관의 백제금동대향로에 깃든 일곱 봉인이 풀려 부여의 유적지로 흩어졌습니다. 특별 수사관인 당신은 각 장소를 탐방하고 단서를 풀어 봉인을 되찾아야 합니다.": (
-        " 이 대사는 게임의 첫 장면이다: 억양을 아주 크게, 극적으로 살린다. '일곱 봉인이 풀려'에서 목소리를 낮추고 신비롭게 끌다가 "
-        "'흩어졌습니다'에서 놀란 듯 힘을 주고, 잠깐 쉰 뒤 '특별 수사관인 당신은'을 듣는 사람을 콕 집듯 또렷하게 부르며, "
-        "'봉인을 되찾아야 합니다'는 사명을 맡기듯 힘 있고 설레게 끝맺는다. 단조로운 낭독은 절대 안 된다."
     ),
     "봉황…! 맞아요. 봉황은 태평성대에만 나타난다는 새죠. 깃털 조각이 첫 번째 봉인이었군요.": (
         " IMPORTANT for this line: the first word '봉황…!' must be a soft, high, breathy, girlish little gasp of wonder — "
@@ -269,7 +279,10 @@ def collect_lines(src: str):
         return unescape(m.group(1) if m.group(1) is not None else m.group(2))
 
     awaken = const("AWAKEN_LINE")
-    lines.add(("narrator", const("INTRO_NARRATION")))  # 시작 화면 소개 글
+    # 시작 화면 나레이션 (사건 속보처럼 한 줄씩)
+    intro = re.search(r"const INTRO_LINES = \[(.*?)\];", src, re.S).group(1)
+    for m in re.finditer(STR, intro):
+        lines.add(("narrator", unescape(m.group(1) if m.group(1) is not None else m.group(2))))
     lines.add(("hero_beast", awaken))
     AWAKEN_LINES.add(("hero_beast", awaken))
     for const_name, (vid, inst) in SCENE_LINES.items():
@@ -286,6 +299,7 @@ def collect_lines(src: str):
 
 
 SPOKEN_OVERRIDE = {
+    "1,400년 동안 잠들어 있던 백제금동대향로의 봉인이… 풀렸다!": "천사백 년 동안 잠들어 있던 백제금동대향로의 봉인이… 풀렸다!",
     "히익, 깜짝이야! …괜찮아, 난 향로의 정령이라고! 역사라면 자신 있어요!":
         "히이익! 깜짝이야!! …괘, 괜찮아! 난 향로의 정령이라고! 역사라면 자신 있어요!!",
     "드디어 본래 모습을 되찾았어!": "드디어 본래 모습을 되찾았어!!! 해냈다아!! 하하하!",

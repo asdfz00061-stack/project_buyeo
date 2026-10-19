@@ -161,7 +161,7 @@ const mouthOf = (src) => (src ? MOUTH[String(src).split('/').pop()] || null : nu
 // 실제 목소리 설정(성우·빠르기·높낮이)은 tools/make_voices.py 의 VOICES 에 있습니다.
 // pitch·rate 는 음성 파일이 없을 때 쓰는 브라우저 내장 음성용 예비 값입니다.
 const VOICE = {
-  [NARRATOR]: { id: 'narrator', pitch: 1, rate: 0.95, playbackRate: 1.2 }, // 음성 파일을 1.2배 빠르게 재생
+  [NARRATOR]: { id: 'narrator', pitch: 1, rate: 0.95, playbackRate: 1.35 }, // 음성 파일을 1.35배 빠르게 재생
   학예연구사: { id: 'curator', pitch: 1.2, rate: 1.03, playbackRate: 1.15 },
   노승: { id: 'monk', pitch: 0.7, rate: 0.85, playbackRate: 1.15 },
   '백제 수문장': { id: 'gatekeeper', pitch: 0.6, rate: 0.95, playbackRate: 1.15 },
@@ -1024,8 +1024,15 @@ const TOTAL = BOOTH ? BOOTH_GOAL : STAGES.length; // 엔딩까지 모아야 하�
 // - next 가 붙은 '다음 장소 안내' 대사는 그 장소가 아직 남아 있을 때만 보여 주고
 // - 마지막으로 봉인을 모은 장소에서는 어디든 완성 대사가 이어집니다.
 // 시작 화면에서 나레이션이 읽어 주는 소개 글 (화면에 보이는 글과 같은 내용)
-const INTRO_NARRATION =
-  '국립부여박물관의 백제금동대향로에 깃든 일곱 봉인이 풀려 부여의 유적지로 흩어졌습니다. 특별 수사관인 당신은 각 장소를 탐방하고 단서를 풀어 봉인을 되찾아야 합니다.';
+// 시작 화면 나레이션: 사건 속보처럼 한 줄씩 (자막과 음성이 함께 넘어감)
+const INTRO_LINES = [
+  '어젯밤 자정, 국립부여박물관.',
+  '1,400년 동안 잠들어 있던 백제금동대향로의 봉인이… 풀렸다!',
+  '일곱 개의 봉인이 빛이 되어 부여 곳곳으로 흩어졌다.',
+  '봉인을 되찾지 못하면, 향로의 힘은 영원히 사라진다…',
+  '특별 수사관, 지금 바로 출동하라!',
+];
+const INTRO_SCATTER_STEP = 2; // 이 줄이 나올 때 향로에서 봉인이 흩어지는 연출
 
 // 공통 대사 (음성 파일을 미리 만들 수 있도록 고정 문장으로 둡니다)
 // 일곱 봉인을 다 모았을 때 마지막 장소 인물이 하는 말 (인물 말투대로)
@@ -1387,11 +1394,12 @@ export default function BuyeoTimeDetective() {
   if (gameStatus === 'intro') {
     return (
       <IntroNarration voiceOn={voiceOn}>
+      {(step, done, runKey) => (
       <Shell>
         <div className="flex min-h-screen items-center justify-center px-4 py-10">
           <div className="anim-pop relative w-full max-w-xl text-center">
             {/* 향로에서 일곱 봉인이 튀어나와 각 유적지로 흩어지는 연출 */}
-            <SealScatter />
+            <SealScatter burstKey={step >= INTRO_SCATTER_STEP ? runKey : null} />
             {/* 금동대향로: 위쪽은 연기가 피어오르는 여백 */}
             <div className="relative mx-auto -mt-6 mb-3 h-[23rem] w-[12rem] sm:h-[28rem] sm:w-[14rem]">
               <CenserIllustration className="h-full w-full" />
@@ -1401,12 +1409,21 @@ export default function BuyeoTimeDetective() {
               부여 시간 탐정
               <span className="mt-2 block text-xl text-[#e2b85c] sm:text-2xl">사라진 향로의 봉인</span>
             </h1>
-            <div className="mx-auto mt-8 max-w-md rounded-2xl border border-[#4a3b26] bg-[#1d1813]/80 p-5 text-left">
-              <p className="font-body text-[15px] leading-7 text-[#d9ccb0]">
-                국립부여박물관의 <b className="text-[#f3e7c9]">백제금동대향로</b>에 깃든 일곱 봉인이 풀려 부여의 유적지로 흩어졌습니다.
-                특별 수사관인 당신은 각 장소를 탐방하고 단서를 풀어 봉인을 되찾아야 합니다.
-              </p>
-              <ul className="font-body mt-4 grid grid-cols-2 gap-2 text-[13px] text-[#b8a888]">
+            {/* 나레이션 자막: 한 줄씩 크게 */}
+            <div className="mt-6 flex min-h-[6.5rem] items-center justify-center px-2" aria-live="polite">
+              {step >= 0 && (
+                <p
+                  key={step}
+                  className="caption-in font-display text-[1.45rem] leading-snug text-[#fbf3de] sm:text-[1.7rem]"
+                  style={{ textWrap: 'balance', textShadow: '0 0 18px rgba(226,184,92,.45), 0 2px 6px rgba(0,0,0,.6)' }}
+                >
+                  {INTRO_LINES[step]}
+                </p>
+              )}
+            </div>
+            <div className="mx-auto mt-4 max-w-md rounded-2xl border border-[#4a3b26] bg-[#1d1813]/80 p-5 text-left">
+              <p className="font-body text-xs tracking-wide text-[#9c8c6e]">봉인이 흩어진 {SEVEN}유적지</p>
+              <ul className="font-body mt-3 grid grid-cols-2 gap-2 text-[13px] text-[#b8a888]">
                 {STAGES.map((s) => {
                   const I = THEME[s.id].icon;
                   return (
@@ -1439,7 +1456,7 @@ export default function BuyeoTimeDetective() {
             ) : (
               <button
                 onClick={startGame}
-                className="font-body mt-8 inline-flex items-center gap-2 rounded-full bg-[#e2b85c] px-8 py-3.5 text-base font-bold text-[#1a140c] transition hover:bg-[#f0cb75] focus:outline-none focus-visible:ring-4 focus-visible:ring-[#e2b85c]/40 active:scale-[0.98]"
+                className={`font-body mt-8 inline-flex items-center gap-2 rounded-full bg-[#e2b85c] px-8 py-3.5 text-base font-bold text-[#1a140c] transition hover:bg-[#f0cb75] focus:outline-none focus-visible:ring-4 focus-visible:ring-[#e2b85c]/40 active:scale-[0.98]${done ? ' start-ready' : ''}`}
               >
                 수사 시작하기 <ChevronRight className="h-5 w-5" />
               </button>
@@ -1449,6 +1466,7 @@ export default function BuyeoTimeDetective() {
           </div>
         </div>
       </Shell>
+      )}
       </IntroNarration>
     );
   }
@@ -1953,6 +1971,18 @@ function Shell({ children }) {
           animation: finaleShine 2.6s ease-in-out infinite;
         }
 
+        /* 시작 화면: 나레이션 자막이 한 줄씩 떠오름, 다 끝나면 시작 버튼이 숨 쉬듯 빛남 */
+        @keyframes captionIn {
+          0% { opacity: 0; transform: translateY(10px) scale(.97); filter: blur(4px); }
+          100% { opacity: 1; transform: none; filter: none; }
+        }
+        .caption-in { animation: captionIn .55s cubic-bezier(.2,.8,.3,1) both; }
+        @keyframes startReady {
+          0%, 100% { box-shadow: 0 0 0 0 rgba(226,184,92,.55); }
+          50% { box-shadow: 0 0 0 10px rgba(226,184,92,0), 0 0 28px rgba(246,220,148,.55); }
+        }
+        .start-ready { animation: startReady 1.6s ease-in-out infinite; }
+
         /* 시작 화면: 흩어지는 일곱 봉인 */
         .seal-item {
           color: #ffe08a;
@@ -2080,7 +2110,7 @@ function Shell({ children }) {
           .morph-beast { display: none !important; }
           .morph-flash { opacity: 0 !important; }
           .morph-human, .aura-glow, .morph-text,
-          .type-caret, .portrait-in, .nudge-right, .reward-pop, .twinkle-loop,
+          .type-caret, .portrait-in, .nudge-right, .reward-pop, .twinkle-loop, .caption-in, .start-ready,
           .anim-fade-up, .anim-pop, .anim-shake, .success-glow, .spin-slow, .spin-rev, .halo-pulse,
           .relic-in, .relic-glow, .stamp-in, .smoke, .title-shine, [class*="animate-"] { animation: none !important; }
           .celebration { display: none !important; }
@@ -2962,10 +2992,11 @@ function BoothReturn({ seconds, onDone }) {
 }
 
 /* 시작 화면: 향로가 번쩍이며 일곱 봉인이 튀어나와 포물선을 그리며 각 유적지 이름으로 날아가 앉음 */
-function SealScatter() {
+function SealScatter({ burstKey }) {
   const ref = useRef(null);
 
   useEffect(() => {
+    if (burstKey == null) return undefined;
     const layer = ref.current;
     const host = layer && layer.parentElement;
     if (!host) return undefined;
@@ -3039,7 +3070,7 @@ function SealScatter() {
       timers.forEach(clearTimeout);
       anims.forEach((a) => a.cancel());
     };
-  }, []);
+  }, [burstKey]);
 
   return (
     <div ref={ref} className="pointer-events-none absolute inset-0 z-20" aria-hidden="true">
@@ -3062,39 +3093,89 @@ function SealScatter() {
   );
 }
 
-/* 시작 화면 나레이션: 화면이 열리면 소개 글을 읽어 줌.
- * 브라우저가 첫 터치 전 소리를 막으면, 버튼이 아닌 곳을 처음 누를 때 읽기 시작. 오른쪽 위에서 다시 듣기 가능. */
+/* 시작 화면 나레이션: 사건 속보처럼 한 줄씩 읽고, 자막도 그 줄로 넘어감.
+ * 음성이 꺼져 있거나 브라우저가 첫 터치 전 소리를 막으면 자막만 시간에 맞춰 넘어가고,
+ * 버튼이 아닌 곳을 처음 누르면 소리와 함께 처음부터 다시. 오른쪽 위에서 다시 듣기 가능.
+ * children(step, done, runKey): 지금 자막 줄 번호, 끝까지 다 나왔는지, 다시 시작할 때마다 바뀌는 값 */
 function IntroNarration({ voiceOn, children }) {
+  const [step, setStep] = useState(-1);
+  const [done, setDone] = useState(false);
   const [playing, setPlaying] = useState(false);
   const [blocked, setBlocked] = useState(false);
+  const [runKey, setRunKey] = useState(0);
+  const blockedRef = useRef(false);
+  const stopRef = useRef(null);
   const profile = VOICE[NARRATOR];
-
-  const play = () => {
-    setBlocked(false);
-    VoicePlayer.play(voiceFile(profile.id, INTRO_NARRATION), {
-      rate: profile.playbackRate || 1,
-      onStart: () => setPlaying(true),
-      onEnd: () => setPlaying(false),
-      onBlocked: () => setBlocked(true),
-    });
-  };
+  const last = INTRO_LINES.length - 1;
 
   useEffect(() => {
-    if (!voiceOn) return undefined;
-    const t = setTimeout(play, 600); // 화면이 뜬 뒤 살짝 쉬었다가
+    let cancelled = false;
+    let timer;
+    const finish = () => {
+      setPlaying(false);
+      setDone(true);
+    };
+    stopRef.current = () => {
+      cancelled = true;
+      clearTimeout(timer);
+      VoicePlayer.stop();
+      setStep(last);
+      finish();
+    };
+    const say = (i) => {
+      if (cancelled) return;
+      if (i > last) {
+        finish();
+        return;
+      }
+      setStep(i);
+      const startedAt = Date.now();
+      const readMs = 1100 + INTRO_LINES[i].length * 95; // 소리 없이 자막만 넘길 때 읽을 시간
+      const next = (minMs = 1200) => {
+        if (cancelled) return;
+        clearTimeout(timer);
+        timer = setTimeout(() => say(i + 1), Math.max(350, minMs - (Date.now() - startedAt)));
+      };
+      if (!voiceOn || blockedRef.current) {
+        next(readMs);
+        return;
+      }
+      setPlaying(true);
+      VoicePlayer.play(voiceFile(profile.id, INTRO_LINES[i]), {
+        rate: profile.playbackRate || 1,
+        // 막혀서 바로 끝난 경우(onBlocked 가 뒤따름)는 자막 읽을 시간만큼 기다림
+        onEnd: () => setTimeout(() => next(blockedRef.current ? readMs : 1200), 0),
+        onBlocked: () => {
+          blockedRef.current = true;
+          setBlocked(true);
+          setPlaying(false);
+        },
+      });
+    };
+    setStep(-1);
+    setDone(false);
+    timer = setTimeout(() => say(0), 600); // 화면이 뜬 뒤 살짝 쉬었다가
     return () => {
-      clearTimeout(t);
+      cancelled = true;
+      clearTimeout(timer);
       VoicePlayer.stop();
     };
-  }, [voiceOn]);
+  }, [voiceOn, runKey]);
 
-  // 자동 재생이 막혔으면: 버튼이 아닌 곳을 처음 누를 때 읽기 시작
+  const restart = () => {
+    blockedRef.current = false;
+    setBlocked(false);
+    setRunKey((k) => k + 1);
+  };
+
+  // 자동 재생이 막혔으면: 버튼이 아닌 곳을 처음 누를 때 소리와 함께 처음부터
   useEffect(() => {
     if (!blocked || !voiceOn) return undefined;
     const onTap = (e) => {
       if (e.target.closest && e.target.closest('button')) return;
       Sound.unlock();
-      play();
+      VoicePlayer.unlock();
+      restart();
     };
     document.addEventListener('pointerdown', onTap, { once: true });
     return () => document.removeEventListener('pointerdown', onTap);
@@ -3102,14 +3183,13 @@ function IntroNarration({ voiceOn, children }) {
 
   return (
     <>
-      {children}
+      {children(step, done, runKey)}
       {voiceOn && (
         <button
           onClick={() => {
             Sound.unlock();
-            if (playing) VoicePlayer.stop();
-            else play();
-            if (playing) setPlaying(false);
+            if (playing && stopRef.current) stopRef.current();
+            else restart();
           }}
           className="font-body fixed right-4 top-4 z-40 inline-flex items-center gap-1.5 rounded-full border border-[#5a4a32] bg-[#1d1813]/90 px-3.5 py-2 text-xs text-[#e8dcc0] backdrop-blur transition hover:border-[#e2b85c] hover:text-[#f6ecd2] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#e2b85c]/60"
         >
