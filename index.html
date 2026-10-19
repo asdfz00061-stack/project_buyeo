@@ -214,7 +214,7 @@ const mouthOf = (src) => (src ? MOUTH[String(src).split('/').pop()] || null : nu
 // 실제 목소리 설정(성우·빠르기·높낮이)은 tools/make_voices.py 의 VOICES 에 있습니다.
 // pitch·rate 는 음성 파일이 없을 때 쓰는 브라우저 내장 음성용 예비 값입니다.
 const VOICE = {
-  [NARRATOR]: { id: 'narrator', pitch: 1, rate: 0.95, playbackRate: 1.35 }, // 음성 파일을 1.35배 빠르게 재생
+  [NARRATOR]: { id: 'narrator', pitch: 1, rate: 0.95, playbackRate: 1.5 }, // 음성 파일을 1.5배 빠르게 재생
   학예연구사: { id: 'curator', pitch: 1.2, rate: 1.03, playbackRate: 1.15 },
   노승: { id: 'monk', pitch: 0.7, rate: 0.85, playbackRate: 1.15 },
   '백제 수문장': { id: 'gatekeeper', pitch: 0.6, rate: 0.95, playbackRate: 1.15 },
@@ -1080,9 +1080,8 @@ const TOTAL = BOOTH ? BOOTH_GOAL : STAGES.length; // 엔딩까지 모아야 하�
 // 시작 화면 나레이션: 사건 속보처럼 한 줄씩 (자막과 음성이 함께 넘어감)
 const INTRO_LINES = [
   '어젯밤 자정, 국립부여박물관.',
-  '1,400년 동안 잠들어 있던 백제금동대향로의 봉인이… 풀렸다!',
-  '일곱 개의 봉인이 빛이 되어 부여 곳곳으로 흩어졌다.',
-  '봉인을 되찾지 못하면, 향로의 힘은 영원히 사라진다…',
+  '백제금동대향로의 봉인이… 풀렸다!',
+  '일곱 봉인이 빛이 되어 부여 곳곳으로 흩어졌다!',
   '특별 수사관, 지금 바로 출동하라!',
 ];
 const INTRO_SCATTER_STEP = 2; // 이 줄이 나올 때 향로에서 봉인이 흩어지는 연출
@@ -3184,10 +3183,10 @@ function IntroNarration({ voiceOn, children }) {
       setStep(i);
       const startedAt = Date.now();
       const readMs = 1100 + INTRO_LINES[i].length * 95; // 소리 없이 자막만 넘길 때 읽을 시간
-      const next = (minMs = 1200) => {
+      const next = (minMs = 900) => {
         if (cancelled) return;
         clearTimeout(timer);
-        timer = setTimeout(() => say(i + 1), Math.max(350, minMs - (Date.now() - startedAt)));
+        timer = setTimeout(() => say(i + 1), Math.max(200, minMs - (Date.now() - startedAt)));
       };
       if (!voiceOn || blockedRef.current) {
         next(readMs);
@@ -3197,7 +3196,7 @@ function IntroNarration({ voiceOn, children }) {
       VoicePlayer.play(voiceFile(profile.id, INTRO_LINES[i]), {
         rate: profile.playbackRate || 1,
         // 막혀서 바로 끝난 경우(onBlocked 가 뒤따름)는 자막 읽을 시간만큼 기다림
-        onEnd: () => setTimeout(() => next(blockedRef.current ? readMs : 1200), 0),
+        onEnd: () => setTimeout(() => next(blockedRef.current ? readMs : 900), 0),
         onBlocked: () => {
           blockedRef.current = true;
           setBlocked(true);

@@ -187,14 +187,11 @@ LINE_EXTRA = {
     "어젯밤 자정, 국립부여박물관.": (
         " IMPORTANT: this is the opening of the game, told like an urgent, dramatic breaking-news bulletin mixed with a movie trailer. Not a slow bedtime story: tense, gripping, faster pace, crisp and powerful, with strong dramatic intonation. Low, hushed and suspenseful, setting a mysterious midnight scene, a short pause after '자정,'."
     ),
-    "1,400년 동안 잠들어 있던 백제금동대향로의 봉인이… 풀렸다!": (
-        " IMPORTANT: this is the opening of the game, told like an urgent, dramatic breaking-news bulletin mixed with a movie trailer. Not a slow bedtime story: tense, gripping, faster pace, crisp and powerful, with strong dramatic intonation. Build tension steadily through the sentence, hold a breathless pause on '봉인이…', then explode on '풀렸다!' with shock and force."
+    "백제금동대향로의 봉인이… 풀렸다!": (
+        " IMPORTANT: this is the opening of the game, told like an urgent, dramatic breaking-news bulletin mixed with a movie trailer. Not a slow bedtime story: tense, gripping, faster pace, crisp and powerful, with strong dramatic intonation. Build tension quickly, hold a breathless pause on '봉인이…', then explode on '풀렸다!' with shock and force."
     ),
-    "일곱 개의 봉인이 빛이 되어 부여 곳곳으로 흩어졌다.": (
+    "일곱 봉인이 빛이 되어 부여 곳곳으로 흩어졌다!": (
         " IMPORTANT: this is the opening of the game, told like an urgent, dramatic breaking-news bulletin mixed with a movie trailer. Not a slow bedtime story: tense, gripping, faster pace, crisp and powerful, with strong dramatic intonation. Fast and vivid, as if watching seven lights shoot across the sky, rising wonder and urgency."
-    ),
-    "봉인을 되찾지 못하면, 향로의 힘은 영원히 사라진다…": (
-        " IMPORTANT: this is the opening of the game, told like an urgent, dramatic breaking-news bulletin mixed with a movie trailer. Not a slow bedtime story: tense, gripping, faster pace, crisp and powerful, with strong dramatic intonation. Grave and ominous, slower, lower, a chilling warning that trails off."
     ),
     "특별 수사관, 지금 바로 출동하라!": (
         " IMPORTANT: this is the opening of the game, told like an urgent, dramatic breaking-news bulletin mixed with a movie trailer. Not a slow bedtime story: tense, gripping, faster pace, crisp and powerful, with strong dramatic intonation. A bold, rousing call to action, confident and thrilling, addressing the listener directly, strong finish."
@@ -299,7 +296,6 @@ def collect_lines(src: str):
 
 
 SPOKEN_OVERRIDE = {
-    "1,400년 동안 잠들어 있던 백제금동대향로의 봉인이… 풀렸다!": "천사백 년 동안 잠들어 있던 백제금동대향로의 봉인이… 풀렸다!",
     "히익, 깜짝이야! …괜찮아, 난 향로의 정령이라고! 역사라면 자신 있어요!":
         "히이익! 깜짝이야!! …괘, 괜찮아! 난 향로의 정령이라고! 역사라면 자신 있어요!!",
     "드디어 본래 모습을 되찾았어!": "드디어 본래 모습을 되찾았어!!! 해냈다아!! 하하하!",
