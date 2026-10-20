@@ -92,7 +92,9 @@ const {
   Stamp,
   Volume2,
   VolumeX,
-  Speech: SpeechIcon
+  Speech: SpeechIcon,
+  Maximize,
+  Minimize
 } = LucideReact;
 
 /* =========================================================================
@@ -526,6 +528,36 @@ const VoicePlayer = (() => {
     },
   };
 })();
+
+/* ---------- 전체화면 (태블릿에서 주소창·버튼 줄을 숨김) ----------
+ * 브라우저는 화면을 누른 순간에만 전체화면을 허락하므로, 시작 버튼이나 전체화면 버튼을 누를 때 켭니다. */
+const Fullscreen = {
+  supported() {
+    const d = document.documentElement;
+    return !!(d.requestFullscreen || d.webkitRequestFullscreen);
+  },
+  isOn() {
+    return !!(document.fullscreenElement || document.webkitFullscreenElement);
+  },
+  enter() {
+    if (!this.supported() || this.isOn()) return;
+    const d = document.documentElement;
+    try {
+      const p = d.requestFullscreen ? d.requestFullscreen({ navigationUI: 'hide' }) : d.webkitRequestFullscreen();
+      if (p && p.catch) p.catch(() => {});
+    } catch {
+      /* 무시 */
+    }
+  },
+  exit() {
+    try {
+      const p = document.exitFullscreen ? document.exitFullscreen() : document.webkitExitFullscreen && document.webkitExitFullscreen();
+      if (p && p.catch) p.catch(() => {});
+    } catch {
+      /* 무시 */
+    }
+  },
+};
 
 /* ---------- 진행 저장 (브라우저 localStorage, 새로고침해도 이어하기) ---------- */
 const SAVE_KEY = 'buyeo-time-detective:save:v1';
@@ -1320,6 +1352,7 @@ function BuyeoTimeDetective() {
   const startGame = () => {
     Sound.unlock();
     VoicePlayer.unlock();
+    Fullscreen.enter();
     const name = playerName.trim();
     resetProgress();
     setPlayerName(name);
@@ -1329,6 +1362,7 @@ function BuyeoTimeDetective() {
   const resumeGame = () => {
     Sound.unlock();
     VoicePlayer.unlock();
+    Fullscreen.enter();
     setGameStatus(saved.gameStatus === 'ending' && visitedStages.length === TOTAL ? 'ending' : 'playing');
   };
 
@@ -2209,7 +2243,34 @@ function Shell({ children }) {
         }}
       />
       <div className="relative">{children}</div>
+      <FullscreenButton />
     </div>
+  );
+}
+
+/* 왼쪽 아래 전체화면 켜기/끄기 버튼 (전체화면을 지원하는 브라우저에서만) */
+function FullscreenButton() {
+  const [on, setOn] = useState(() => Fullscreen.isOn());
+  useEffect(() => {
+    const update = () => setOn(Fullscreen.isOn());
+    document.addEventListener('fullscreenchange', update);
+    document.addEventListener('webkitfullscreenchange', update);
+    return () => {
+      document.removeEventListener('fullscreenchange', update);
+      document.removeEventListener('webkitfullscreenchange', update);
+    };
+  }, []);
+  if (!Fullscreen.supported()) return null;
+  return (
+    <button
+      onClick={() => (on ? Fullscreen.exit() : Fullscreen.enter())}
+      aria-label={on ? '전체화면 끄기' : '전체화면으로 보기'}
+      title={on ? '전체화면 끄기' : '전체화면으로 보기'}
+      className="font-body fixed bottom-4 left-4 z-40 inline-flex items-center gap-1.5 rounded-full border border-[#5a4a32] bg-[#1d1813]/85 px-3 py-2 text-xs text-[#e8dcc0] shadow-lg backdrop-blur transition hover:border-[#e2b85c] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#e2b85c]/60"
+    >
+      {on ? <Minimize className="h-4 w-4 text-[#e2b85c]" /> : <Maximize className="h-4 w-4 text-[#e2b85c]" />}
+      {!on && <span>전체화면</span>}
+    </button>
   );
 }
 
