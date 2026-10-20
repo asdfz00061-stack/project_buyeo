@@ -3,7 +3,7 @@
  * - 버전이 고정된 라이브러리·음성·사진은 한 번 받으면 저장해 두고 재사용 (유적지에서 신호가 약해도 동작)
  * 파일 구성을 크게 바꾸면 CACHE 이름의 숫자를 올려 주세요.
  */
-const CACHE = 'buyeo-detective-v33'; // v33: 체험 모드 글자 조각 고르기, 수료증 이름
+const CACHE = 'buyeo-detective-v34'; // v34: 본 버전도 글자 조각, 적은 이름으로 부르기
 const CORE = [
   './',
   './manifest.webmanifest',

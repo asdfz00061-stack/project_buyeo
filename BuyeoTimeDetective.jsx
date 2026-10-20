@@ -110,7 +110,7 @@ const BOOTH = (() => {
 const BOOTH_GOAL = 3;
 const BOOTH_RETURN_SEC = 30;
 const SEVEN = BOOTH ? '' : '일곱 '; // 화면 문구의 '일곱' (부스 모드에서는 빼고 표시)
-const LETTER_TILES = BOOTH; // 주관식을 타자 대신 글자 조각 고르기로 (어린 체험자가 자판에서 막히지 않게)
+const LETTER_TILES = true; // 주관식을 타자 대신 글자 조각 고르기로 (태블릿 자판에서 막히지 않게)
 
 // 말할 때 움직이는 입 위치: 초상화 이미지(3:4) 기준 %. x·y = 입 중심, w = 입 너비
 // jaw 가 있으면 입을 덧그리지 않고 아랫입술·턱을 살짝 내려 입이 벌어지게 함 (원래 입이 크게 그려진 인물용)
@@ -1081,6 +1081,11 @@ const buildClearDialogues = (s, visited) => {
   return lines;
 };
 const NAME_MAX = 8; // 수료증에 들어갈 수사관 이름 최대 글자 수
+// 이름을 적으면 인물들이 '금동이 수사관님' 대신 그 이름으로 부름.
+// 음성은 이름을 말할 수 없으니 '금동이'만 잘라 낸 녹음('수사관님…')을 따로 둠 (audio/voice 에 미리 만들어 둔 파일)
+const ADDRESS = '금동이 수사관님';
+const withName = (text, name) => (name ? text.split(ADDRESS).join(`${name} 수사관님`) : text);
+const voiceTextFor = (text, name) => (name ? text.split(ADDRESS).join('수사관님') : text);
 const normalize = (s) => String(s ?? '').replace(/\s+/g, '').toLowerCase();
 const formatDate = (d) => `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일`;
 const rewardOf = (s) => ({ ...s.rewardItem, stageId: s.id, stageName: s.name });
@@ -1715,7 +1720,8 @@ export default function BuyeoTimeDetective() {
               <DialogueBox
                 key={stage.id}
                 speaker={activeDialogue.speaker}
-                text={activeDialogue.text}
+                text={withName(activeDialogue.text, playerName.trim())}
+                voiceText={voiceTextFor(activeDialogue.text, playerName.trim())}
                 narration={activeDialogue.speaker === NARRATOR}
                 sceneAvatar={stage.dialogues.find((d) => d.speaker !== NARRATOR && !d.speaker.startsWith('수사관'))?.avatar || null}
                 sceneName={stage.npc?.name || ''}
@@ -2497,7 +2503,7 @@ function EndingScreen({ playerName, inventory, completedAt, mistakeCount, hintCo
           speaker="학예연구사"
           role="국립부여박물관 학예연구사"
           avatar="./images/characters/curator.png"
-          text="금동이 수사관님 덕분에 향로가 제자리를 찾았어요. 봉황이 다시 날개를 펼쳤으니, 부여의 시간도 다시 흐르기 시작할 거예요."
+          text={withName('금동이 수사관님 덕분에 향로가 제자리를 찾았어요. 봉황이 다시 날개를 펼쳤으니, 부여의 시간도 다시 흐르기 시작할 거예요.', playerName)}
         />
       </div>
 
@@ -3437,6 +3443,7 @@ function useTypewriter(text, speed = 40) {
 function DialogueBox({
   speaker,
   text,
+  voiceText, // 음성 파일을 찾을 때 쓸 글자 (없으면 text)
   avatar,
   heroMode = 'beast',
   npcRole,
@@ -3469,13 +3476,13 @@ function DialogueBox({
     const onStart = () => setSpeaking(true);
     const onEnd = () => setSpeaking(false);
     const fallback = () => Speech.speak(text, { pitch, rate: rate * playbackRate }, onStart, onEnd);
-    if (voiceId) VoicePlayer.play(voiceFile(voiceId, text), { onStart, onEnd, fallback, rate: playbackRate });
+    if (voiceId) VoicePlayer.play(voiceFile(voiceId, voiceText ?? text), { onStart, onEnd, fallback, rate: playbackRate });
     else fallback();
     return () => {
       VoicePlayer.stop();
       setSpeaking(false);
     };
-  }, [text, voiceOn, voiceId, pitch, rate, playbackRate]);
+  }, [text, voiceText, voiceOn, voiceId, pitch, rate, playbackRate]);
 
   // 음성이 꺼져 있으면 글자가 찍힐 때 '톡톡' 타자 소리 (인물 목소리 높낮이 반영)
   useEffect(() => {
