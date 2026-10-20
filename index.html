@@ -1134,11 +1134,6 @@ const buildClearDialogues = (s, visited) => {
   return lines;
 };
 const NAME_MAX = 8; // 수료증에 들어갈 수사관 이름 최대 글자 수
-// 이름을 적으면 인물들이 '금동이 수사관님' 대신 그 이름으로 부름.
-// 음성은 이름을 말할 수 없으니 '금동이'만 잘라 낸 녹음('수사관님…')을 따로 둠 (audio/voice 에 미리 만들어 둔 파일)
-const ADDRESS = '금동이 수사관님';
-const withName = (text, name) => (name ? text.split(ADDRESS).join(`${name} 수사관님`) : text);
-const voiceTextFor = (text, name) => (name ? text.split(ADDRESS).join('수사관님') : text);
 const normalize = (s) => String(s ?? '').replace(/\s+/g, '').toLowerCase();
 const formatDate = (d) => `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일`;
 const rewardOf = (s) => ({ ...s.rewardItem, stageId: s.id, stageName: s.name });
@@ -1773,8 +1768,7 @@ function BuyeoTimeDetective() {
               <DialogueBox
                 key={stage.id}
                 speaker={activeDialogue.speaker}
-                text={withName(activeDialogue.text, playerName.trim())}
-                voiceText={voiceTextFor(activeDialogue.text, playerName.trim())}
+                text={activeDialogue.text}
                 narration={activeDialogue.speaker === NARRATOR}
                 sceneAvatar={stage.dialogues.find((d) => d.speaker !== NARRATOR && !d.speaker.startsWith('수사관'))?.avatar || null}
                 sceneName={stage.npc?.name || ''}
@@ -2556,7 +2550,7 @@ function EndingScreen({ playerName, inventory, completedAt, mistakeCount, hintCo
           speaker="학예연구사"
           role="국립부여박물관 학예연구사"
           avatar="./images/characters/curator.png"
-          text={withName('금동이 수사관님 덕분에 향로가 제자리를 찾았어요. 봉황이 다시 날개를 펼쳤으니, 부여의 시간도 다시 흐르기 시작할 거예요.', playerName)}
+          text="금동이 수사관님 덕분에 향로가 제자리를 찾았어요. 봉황이 다시 날개를 펼쳤으니, 부여의 시간도 다시 흐르기 시작할 거예요."
         />
       </div>
 
@@ -2629,7 +2623,7 @@ function EndingScreen({ playerName, inventory, completedAt, mistakeCount, hintCo
             </div>
 
             <p className="font-body mt-5 border-t border-[#b0813a]/40 pt-4 pr-24 text-[13px] leading-6 text-[#4a3820] sm:pr-28 sm:text-sm">
-              {playerName ? `${playerName} 수사관은` : '위 수사관은'} 부여 {SEVEN}유적지를 탐방하여 백제금동대향로의 봉인을 모두 되찾았기에, 그 공로를 기려 이 증서를 수여합니다.
+              {playerName ? `${playerName} 수사관은` : '위 수사관은'} 금동이와 함께 부여 {SEVEN}유적지를 탐방하여 백제금동대향로의 봉인을 모두 되찾았기에, 그 공로를 기려 이 증서를 수여합니다.
             </p>
             <p className="font-display mt-3 pr-24 text-sm text-[#3a2a17] sm:pr-28">국립부여박물관 특별수사본부</p>
 
@@ -3496,7 +3490,6 @@ function useTypewriter(text, speed = 40) {
 function DialogueBox({
   speaker,
   text,
-  voiceText, // 음성 파일을 찾을 때 쓸 글자 (없으면 text)
   avatar,
   heroMode = 'beast',
   npcRole,
@@ -3529,13 +3522,13 @@ function DialogueBox({
     const onStart = () => setSpeaking(true);
     const onEnd = () => setSpeaking(false);
     const fallback = () => Speech.speak(text, { pitch, rate: rate * playbackRate }, onStart, onEnd);
-    if (voiceId) VoicePlayer.play(voiceFile(voiceId, voiceText ?? text), { onStart, onEnd, fallback, rate: playbackRate });
+    if (voiceId) VoicePlayer.play(voiceFile(voiceId, text), { onStart, onEnd, fallback, rate: playbackRate });
     else fallback();
     return () => {
       VoicePlayer.stop();
       setSpeaking(false);
     };
-  }, [text, voiceText, voiceOn, voiceId, pitch, rate, playbackRate]);
+  }, [text, voiceOn, voiceId, pitch, rate, playbackRate]);
 
   // 음성이 꺼져 있으면 글자가 찍힐 때 '톡톡' 타자 소리 (인물 목소리 높낮이 반영)
   useEffect(() => {
