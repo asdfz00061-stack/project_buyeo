@@ -1063,12 +1063,11 @@ const TOTAL = BOOTH ? BOOTH_GOAL : STAGES.length; // 엔딩까지 모아야 하�
 // 시작 화면에서 나레이션이 읽어 주는 소개 글 (화면에 보이는 글과 같은 내용)
 // 시작 화면 나레이션: 사건 속보처럼 한 줄씩 (자막과 음성이 함께 넘어감)
 const INTRO_LINES = [
-  '어젯밤 자정, 국립부여박물관.',
   '백제금동대향로의 봉인이… 풀렸다!',
   '일곱 봉인이 빛이 되어 부여 곳곳으로 흩어졌다!',
   '특별 수사관, 지금 바로 출동하라!',
 ];
-const INTRO_SCATTER_STEP = 2; // 이 줄이 나올 때 향로에서 봉인이 흩어지는 연출
+const INTRO_SCATTER_STEP = 1; // 이 줄이 나올 때 향로에서 봉인이 흩어지는 연출
 
 // 공통 대사 (음성 파일을 미리 만들 수 있도록 고정 문장으로 둡니다)
 // 일곱 봉인을 다 모았을 때 마지막 장소 인물이 하는 말 (인물 말투대로)
@@ -1496,9 +1495,17 @@ export default function BuyeoTimeDetective() {
               </ul>
             </div>
             )}
-            {/* 나레이션이 끝나면(또는 건너뛰면) 이름 칸과 시작 버튼 */}
+            {/* 나레이션이 끝나면(또는 건너뛰면) 시작 버튼 (화면 아래에 있으면 보이도록 내려 줌) */}
             {done && (
-            <div className="anim-fade-up">
+            <div
+              className="anim-fade-up"
+              ref={(el) => {
+                if (el && !el.dataset.shown) {
+                  el.dataset.shown = '1';
+                  setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'center' }), 150);
+                }
+              }}
+            >
             {canResume ? (
               <div className="mt-8 flex flex-col items-center gap-3">
                 <button
@@ -1519,25 +1526,9 @@ export default function BuyeoTimeDetective() {
               </div>
             ) : (
               <>
-              <label className="font-body mx-auto mt-7 block max-w-xs text-left">
-                <span className="text-xs text-[#9c8c6e]">수사관 이름 (수료증에 들어가요 · 안 써도 돼요)</span>
-                <input
-                  type="text"
-                  value={playerName}
-                  maxLength={NAME_MAX}
-                  onChange={(e) => setPlayerName(e.target.value.slice(0, NAME_MAX))}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.nativeEvent.isComposing) startGame();
-                  }}
-                  placeholder="예: 김부여"
-                  autoComplete="off"
-                  enterKeyHint="go"
-                  className="mt-1.5 w-full rounded-xl border border-[#4a3b26] bg-[#120f0c] px-4 py-2.5 text-center text-base text-[#f6ecd2] placeholder:text-[#5f5544] focus:border-[#e2b85c] focus:outline-none focus:ring-2 focus:ring-[#e2b85c]/30"
-                />
-              </label>
               <button
                 onClick={startGame}
-                className={`font-body mt-5 inline-flex items-center gap-2 rounded-full bg-[#e2b85c] px-8 py-3.5 text-base font-bold text-[#1a140c] transition hover:bg-[#f0cb75] focus:outline-none focus-visible:ring-4 focus-visible:ring-[#e2b85c]/40 active:scale-[0.98]${done ? ' start-ready' : ''}`}
+                className={`font-body mt-7 inline-flex items-center gap-2 rounded-full bg-[#e2b85c] px-8 py-3.5 text-base font-bold text-[#1a140c] transition hover:bg-[#f0cb75] focus:outline-none focus-visible:ring-4 focus-visible:ring-[#e2b85c]/40 active:scale-[0.98]${done ? ' start-ready' : ''}`}
               >
                 수사 시작하기 <ChevronRight className="h-5 w-5" />
               </button>

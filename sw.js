@@ -3,7 +3,7 @@
  * - 버전이 고정된 라이브러리·음성·사진은 한 번 받으면 저장해 두고 재사용 (유적지에서 신호가 약해도 동작)
  * 파일 구성을 크게 바꾸면 CACHE 이름의 숫자를 올려 주세요.
  */
-const CACHE = 'buyeo-detective-v37'; // v37: '시작하기' 첫 화면, 게임 중 '처음 화면' 버튼
+const CACHE = 'buyeo-detective-v38'; // v38: 나레이션 3줄, 이름 칸 삭제, 연꽃 씨앗 그림
 const CORE = [
   './',
   './manifest.webmanifest',

@@ -184,9 +184,6 @@ STANDARD = (
 
 # 특정 대사에만 덧붙이는 연기 지시 (대사 글 → 추가 지시)
 LINE_EXTRA = {
-    "어젯밤 자정, 국립부여박물관.": (
-        " IMPORTANT: this is the opening of the game, told like an urgent, dramatic breaking-news bulletin mixed with a movie trailer. Not a slow bedtime story: tense, gripping, faster pace, crisp and powerful, with strong dramatic intonation. Low, hushed and suspenseful, setting a mysterious midnight scene, a short pause after '자정,'."
-    ),
     "백제금동대향로의 봉인이… 풀렸다!": (
         " IMPORTANT: this is the opening of the game, told like an urgent, dramatic breaking-news bulletin mixed with a movie trailer. Not a slow bedtime story: tense, gripping, faster pace, crisp and powerful, with strong dramatic intonation. Build tension quickly, hold a breathless pause on '봉인이…', then explode on '풀렸다!' with shock and force."
     ),
