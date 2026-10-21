@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
+import ReactDOM from 'react-dom';
 import {
   Search,
   BookOpen,
@@ -42,6 +43,7 @@ import {
   Speech as SpeechIcon,
   Maximize,
   Minimize,
+  ChevronsDown,
 } from 'lucide-react';
 
 /* =========================================================================
@@ -1055,6 +1057,14 @@ const STAGES = [
     ],
   },
 ];
+// 부스 체험 모드: 대사를 줄여 지루하지 않게 (문제 전: 인물 인사 + 단서, 푼 뒤: 칭찬 + 금동이 한마디)
+if (BOOTH) {
+  STAGES.forEach((s) => {
+    s.dialogues = [s.dialogues[0], s.dialogues[s.dialogues.length - 1]];
+    s.clearDialogues = s.clearDialogues.filter((d) => !d.next);
+  });
+}
+
 const TOTAL = BOOTH ? BOOTH_GOAL : STAGES.length; // 엔딩까지 모아야 하는 봉인 수
 
 // 클리어 대화 구성: 장소는 순서와 상관없이 풀 수 있으므로
@@ -1106,7 +1116,7 @@ const buildClearDialogues = (s, visited) => {
       { speaker: '수사관 (나)', avatar: null, text: AWAKEN_LINE },
     ];
   }
-  if (!lines.some((d) => d.next)) {
+  if (!BOOTH && !lines.some((d) => d.next)) {
     lines.push({ speaker: npc.speaker, avatar: npc.avatar, text: GUIDE_LINES[npc.speaker] || GUIDE_LINES.해설사 });
   }
   return lines;
@@ -2067,6 +2077,13 @@ function Shell({ children }) {
           50% { box-shadow: 0 0 0 10px rgba(226,184,92,0), 0 0 28px rgba(246,220,148,.55); }
         }
         .start-ready { animation: startReady 1.6s ease-in-out infinite; }
+
+        /* 문제가 화면 아래에 있을 때 '아래로 내려서 문제를 풀어요' 버튼이 통통 튐 */
+        @keyframes nudgeDown {
+          0%, 100% { transform: translate(-50%, 0); }
+          50% { transform: translate(-50%, 7px); }
+        }
+        .nudge-down { animation: nudgeDown 1.1s ease-in-out infinite; }
 
         /* 시작 화면: 흩어지는 일곱 봉인 */
         .seal-item {
@@ -3856,6 +3873,34 @@ function QuizPanel({
 }) {
   const shakeRef = useRef(null);
   const inputRef = useRef(null);
+  const sectionRef = useRef(null);
+  const [inView, setInView] = useState(true);
+
+  // 문제가 나타나면 화면을 문제 쪽으로 내려 주고, 문제가 화면 밖이면 아래 화살표를 보여 줌 (아이들이 스크롤을 잘 몰라서)
+  useEffect(() => {
+    const el = sectionRef.current;
+    if (!el) return undefined;
+    const t = setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'center' }), 350);
+    // 문제 칸의 윗부분(제목·글자 칸)이 화면 안에 들어와 있으면 '보이는 것'으로
+    let raf = 0;
+    const check = () => {
+      raf = 0;
+      const r = el.getBoundingClientRect();
+      setInView(r.top < window.innerHeight - 120 && r.bottom > 80);
+    };
+    const onScroll = () => {
+      if (!raf) raf = requestAnimationFrame(check);
+    };
+    check();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll);
+    return () => {
+      clearTimeout(t);
+      cancelAnimationFrame(raf);
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onScroll);
+    };
+  }, [quiz]);
 
   // 두 번 틀리면 두 번째 힌트: 주관식은 글자 수·첫 글자, 객관식은 오답 두 개 지우기
   const secondHint = attempts >= SECOND_HINT_AFTER;
@@ -3889,7 +3934,17 @@ function QuizPanel({
   }, [quiz]);
 
   return (
-    <section className="anim-fade-up rounded-2xl border border-[#e2b85c]/35 bg-gradient-to-b from-[#241d13] to-[#1c1712] p-4 sm:p-5">
+    <section ref={sectionRef} className="anim-fade-up rounded-2xl border border-[#e2b85c]/35 bg-gradient-to-b from-[#241d13] to-[#1c1712] p-4 sm:p-5">
+      {!inView && ReactDOM.createPortal(
+        <button
+          type="button"
+          onClick={() => sectionRef.current && sectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' })}
+          className="nudge-down font-body fixed bottom-5 left-1/2 z-40 inline-flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-[#e2b85c] px-5 py-2.5 text-sm font-bold text-[#1a140c] shadow-[0_0_24px_rgba(226,184,92,0.55)] focus:outline-none focus-visible:ring-4 focus-visible:ring-[#e2b85c]/40"
+        >
+          <ChevronsDown className="h-5 w-5" /> 아래로 내려서 문제를 풀어요
+        </button>,
+        document.body,
+      )}
       <div className="font-body flex items-center justify-between gap-2">
         <span className="inline-flex items-center gap-1.5 rounded-full bg-[#e2b85c]/15 px-2.5 py-1 text-xs font-bold text-[#e2b85c]">
           <KeyRound className="h-3.5 w-3.5" /> 봉인 해제 단서 · {quiz.type === 'choice' ? '객관식' : '주관식'}
